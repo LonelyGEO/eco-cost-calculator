@@ -1,125 +1,61 @@
+# ECO 成本计算器（简体中文）
 
+这是 [Gonozal/eco-cost-calculator](https://github.com/Gonozal/eco-cost-calculator) 的简体中文 fork。项目保留原有成本计算逻辑，并完成了界面、配方、物品、职业、制作站、网页元数据和使用说明的中文本地化。
 
-# Using the calculator
+在线使用：[https://lonelygeo.github.io/eco-cost-calculator/](https://lonelygeo.github.io/eco-cost-calculator/)
 
-The cost calculators works with recipes first.
+## 使用方法
 
-On the right side, select the recipe you want to calculate.
-The primary output will automatically be added to the "Products" Tab, the required materials to "Inputs" and any potential by-product (e.g. Slag, Tailings, Barrels) to a "Byproduct" section in the "inputs" tab.
+计算器以配方为入口。在右侧“产品”区域选择要计算的制作配方后，主要产物会自动加入产品列表，所需材料会加入“原料”，炉渣、尾矿、桶等产出则会加入“副产品”。对应的职业与制作站也会自动出现。
 
-Tables and professions are automatically added as needed.
+为原料填入市场价格，并按实际情况设置职业等级、制作站升级组件、利润率与每千卡成本，计算器会自动更新产品价格。如果一个物品可由多个配方生产，计算时会采用成本最低的方案。
 
-If an item is produced by multiple recipes (e.g. multiple tiers of ore crushing), the cheapest option is used for that item.
+原料名称旁的“+”按钮可以快速添加一个能够生产该物品的配方。若存在多种生产方式，请确认自动选中的配方是否符合你的实际生产路线。
 
-There's also a shortcut for adding a recipe by clicking on the "+" Icon in the input list. This is adding the first found recipe that produces this item. If there are multiple options (e.g. smelting, concentrating, mortar, ...), double-check if the correct option was added.
+## 副产品
 
-## Byproducts
-If you want to include byproduct prices in your calculations, just add what you're selling them for to the items in the "byproducts" section in Inputs. For example, if you pay people to take away your tailings, you could enter "-1" for the "Wet Tailings" item.
-For byproducts that you also produce yourself, you still have to manually enter the value.
+若要把副产品价值计入成本，请在“副产品”区域填写其出售价格。如果需要付费请人处理尾矿，可输入负数；例如处理一单位湿尾矿需支付 1，可填 `-1`。
 
-This is basically required for Barrels, makes a noticeable difference for tailings, but can mostly be ignored for ore crushing.
+桶的价值通常不应忽略。可以先查看“产品”区域计算出的桶价格，再把该价格填写到副产品区域。尾矿价格也可能明显影响最终成本，而矿石破碎产生的副产品通常影响较小。
 
-For barrels, it's best to look at your "products" tab and copy the barrel price.
+## 计算规则与限制
 
-## Quirks
-The profit margin is applied to each product. If that product is used in another product, the profit margin is applied again.
-That means that large margins somewhat exponentially increase the price of the end-product. This is intentional. Crafting from ore to skid steer should be more rewarding than just selling the equivalent amount of crushed ore.
+- 利润率会应用于每一级产品。中间产品再次用于下游生产时，利润率会再次计入，因此长生产链的最终价格会随利润率逐级增加。
+- 计算器允许给不支持豪华工作空间的职业勾选相应加成，也允许给实际不支持升级组件的制作站选择组件；请按游戏内情况设置。
+- 标签原料目前按独立物品处理。例如需要“脂肪”的配方不会自动采用你已计算的“油”，通用“原木”也不会自动采用某一种具体原木。
+- 内置数据来自原项目的 ECO 9.5 测试版本。设置中可以为每个方案上传自定义配方 JSON，以适配模组服务器或其他游戏版本；每个配方最多应有两个产物。
 
-There is an option to add the "Lavish Workspace Bonus" even to professions that don't have it as an option (e.g. Mining, Logging).
-I didn't find an easy way to extract this information from the running game. Just don't check the box for skills that can't have that bonus.
+## 本地开发
 
-There is an option to add Modules to tables that don't support them. This is a bit annoying, but again I didn't find a good way to easily extract that data from the server.
+需要 Node.js 与 npm：
 
-Tags are not currently handled in a special way. That means an item requiring "Fat" as an input does not automatically use your "Oil" product. Also, an item requiring generic "logs" won't use the price of your "Oak Log" input. They're all treated as different items.
-
-# Customization
-The cost calculator has preset recipes for the 9.5 playtest.
-
-However, you can upload a custom recipe JSON file for each profile.
-This allows using this tool even with modded servers and newer versions.
-
-The only limitation is, that a recipe should only have at most 2 outputs.
-
-The output that's not scaling with modules or has the largest quantity is considered the "primary" output, while a (random) other output is considered the "byproduct"
-
-The JSON file should be an array of recipe-entries like this:
-
-```json
-{
-  "name": "Iron Pipe",
-  "ingredients": [
-    {
-      "displayName": "Iron Bar",
-      "name": "IronBarItem",
-      "tag": null,
-      "quantity": 2.0,
-      "isConstant": false
-    }
-  ],
-  "products": [
-    {
-      "displayName": "Iron Pipe",
-      "name": "IronPipeItem",
-      "tag": null,
-      "quantity": 1.0,
-      "isConstant": true
-    }
-  ],
-  "experience": 0.5,
-  "time": 0.8,
-  "calories": 15.0,
-  "table": "Anvil",
-  "professions": [
-    {
-      "name": "SmeltingSkill",
-      "displayName": "Smelting",
-      "level": 1
-    }
-  ]
-}
+```bash
+npm install
+npm start
 ```
 
+生产构建：
 
-# Source Code
-## Available Scripts
+```bash
+npm run build
+```
 
-In the project directory, you can run:
+部署到当前 `homepage` 所配置的 GitHub Pages：
 
-### `npm start`
+```bash
+npm run deploy
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## 更新游戏术语
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+`src/data/game-zh-cn.json` 保存计算器内置数据所需的中英文术语映射。其译名参考 ECO 官方社区的[简体中文本地化项目](https://localization.play.eco/projects/eco/game/zh_Hans/)。安装 PowerShell 7 后可运行以下命令，根据最新官方术语重新生成映射并检查翻译覆盖率：
 
-### `npm test`
+```bash
+npm run sync:translations
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+脚本只提取本计算器实际使用的短术语；原始英文标识仍保留在状态与导出文件中，因此旧版方案可继续导入。
 
-### `npm run build`
+## 许可证
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+本项目沿用原项目的 [MIT License](LICENSE)。ECO 及相关游戏内容的权利归其各自权利人所有。

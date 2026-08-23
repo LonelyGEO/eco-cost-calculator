@@ -41,6 +41,7 @@ export const Settings: React.FC<SettingsProps> = ({
       <Stack>
         <div style={{ display: 'flex' }}>
           <IconButton
+            aria-label={isVisible ? '收起设置' : '展开设置'}
             onClick={() => setIsVisible((visible) => !visible)}
             color={isVisible ? 'info' : 'inherit'}
           >
@@ -53,7 +54,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 component="span"
                 sx={{ marginLeft: 'auto', marginRight: 'auto' }}
               >
-                Settings
+                设置
               </Typography>
             </>
           )}
@@ -66,9 +67,9 @@ export const Settings: React.FC<SettingsProps> = ({
                 href={window.URL.createObjectURL(
                   new Blob([JSON.stringify(activeProfile, replacer)]),
                 )}
-                download="cost-calc-profile.json"
+                download="eco-cost-calculator-profile.json"
               >
-                Export Profile
+                导出方案
               </Button>
               <label htmlFor="import-profile-button">
                 <Input
@@ -94,12 +95,12 @@ export const Settings: React.FC<SettingsProps> = ({
                   }}
                 />
                 <Button component="span" color="warning" fullWidth>
-                  Import Profile
+                  导入方案
                 </Button>
               </label>
             </FlexItem>
             <FlexItem>
-              <Typography component="span">Profile Name</Typography>
+              <Typography component="span">方案名称</Typography>
               <TextField
                 variant="outlined"
                 margin="dense"
@@ -117,7 +118,7 @@ export const Settings: React.FC<SettingsProps> = ({
               />
             </FlexItem>
             <FlexItem>
-              <Typography component="span">Profit Margin</Typography>
+              <Typography component="span">利润率</Typography>
               <NumberInput
                 value={activeProfile.margin * 100}
                 onChange={(event) => {
@@ -136,7 +137,7 @@ export const Settings: React.FC<SettingsProps> = ({
               />
             </FlexItem>
             <FlexItem>
-              <Typography component="span">Cost per kcal</Typography>
+              <Typography component="span">每千卡成本</Typography>
               <NumberInput
                 value={activeProfile.calorieCost}
                 sx={{ width: 160 }}
@@ -152,7 +153,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
             <FlexItem>
               <FormControlLabel
-                label="Show Dangerous Actions"
+                label="显示危险操作"
                 control={
                   <Checkbox
                     checked={showDangerousActions}
@@ -167,8 +168,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
             {showDangerousActions && (
               <>
-                Upload new JSON-data. This resets all skills, inputs and
-                products
+                上传新的 JSON 数据将重置全部技能、原料和产品。
                 <label htmlFor="contained-button-file">
                   <Input
                     accept="application/json"
@@ -190,11 +190,11 @@ export const Settings: React.FC<SettingsProps> = ({
                     }}
                   />
                   <Button component="span" color="warning" fullWidth>
-                    Upload data-json
+                    上传数据 JSON
                   </Button>
                 </label>
                 <Divider />
-                Delete the current profile. This action cannot be undone
+                删除当前方案。此操作无法撤销。
                 <Button
                   color="error"
                   onClick={() => {
@@ -202,7 +202,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     dispatch({ type: ActionType.DELETE_ACTIVE_PROFILE });
                   }}
                 >
-                  Delete Profile
+                  删除方案
                 </Button>
               </>
             )}
@@ -210,7 +210,7 @@ export const Settings: React.FC<SettingsProps> = ({
         ) : (
           <>
             <Typography>{activeProfile.margin * 100}%</Typography>
-            <Typography>{activeProfile.calorieCost}/kcal</Typography>
+            <Typography>{activeProfile.calorieCost}/千卡</Typography>
           </>
         )}
       </Stack>

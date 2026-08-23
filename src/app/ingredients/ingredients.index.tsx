@@ -6,6 +6,7 @@ import { Action, ActionType, Item, ItemMap } from '../common/state/state';
 import { useDebounce } from '../common/use-debounce.hook';
 import AddIcon from '@mui/icons-material/Add';
 import styled from 'styled-components';
+import { localizeGameText } from '../../data/localization';
 
 const LabelGroup = styled.div`
   display: flex;
@@ -25,7 +26,7 @@ export const Ingredients: React.FC<IngredientsProps> = ({
   const hasByproducts = byproducts.size > 0;
   return (
     <Stack>
-      {hasByproducts && <Typography variant="h5">Inputs</Typography>}
+      {hasByproducts && <Typography variant="h5">原料</Typography>}
       {Array.from(inputs.values()).map((input) => (
         <Ingredient
           key={input.name}
@@ -34,7 +35,7 @@ export const Ingredients: React.FC<IngredientsProps> = ({
           updateAction={ActionType.UPDATE_ITEM_PRICE}
         />
       ))}
-      {hasByproducts && <Typography variant="h5">Byproducts</Typography>}
+      {hasByproducts && <Typography variant="h5">副产品</Typography>}
       {Array.from(byproducts.values()).map((byproduct) => (
         <Ingredient
           key={byproduct.name}
@@ -78,10 +79,13 @@ const Ingredient: React.FC<IngredientProps> = ({
   return (
     <FlexItem>
       <LabelGroup>
-        <Typography component="div">{item.displayName} </Typography>
+        <Typography component="div">
+          {localizeGameText(item.displayName)}{' '}
+        </Typography>
         {item.canBeProduced && (
-          <Tooltip title="Add Recipe for Item">
+          <Tooltip title="添加该物品的配方">
             <IconButton
+              aria-label={`添加${localizeGameText(item.displayName)}的配方`}
               onClick={() =>
                 dispatch({
                   type: ActionType.ADD_RECIPE_FROM_INPUT,

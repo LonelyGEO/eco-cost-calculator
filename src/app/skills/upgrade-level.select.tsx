@@ -35,13 +35,13 @@ export const UpgradeLevelSelect: React.FC<UpgradeLevelSelectProps> = ({
         });
       }}
     >
-      <MenuItem value={0}>No Upgrade</MenuItem>
+      <MenuItem value={0}>无升级组件</MenuItem>
       {[1, 2, 3, 4].map((option) => (
         <MenuItem key={option} value={option}>
-          Upgrade Level {option}
+          {option} 级升级组件
         </MenuItem>
       ))}
-      <MenuItem value={5}>Specialized Upgrade</MenuItem>
+      <MenuItem value={5}>专业升级组件</MenuItem>
     </TextField>
   );
 };

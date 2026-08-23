@@ -4,9 +4,12 @@ import { expect } from 'chai';
 import App from './app';
 
 describe('<App>', () => {
-  it('renders learn react link', () => {
-    const { getByText } = render(<App />);
-    const linkElement = getByText(/learn react/i);
-    expect(document.body.contains(linkElement));
+  it('renders the Simplified Chinese calculator', () => {
+    const { getByLabelText, getByText } = render(<App />);
+
+    expect(getByText('技能与制作站')).to.exist;
+    expect(getByText('原料')).to.exist;
+    expect(getByText('产品')).to.exist;
+    expect(getByLabelText('选择制作配方')).to.exist;
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "cost-calculator",
-  "homepage": "https://gonozal.github.io/eco-cost-calculator/",
+  "homepage": "https://lonelygeo.github.io/eco-cost-calculator/",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -47,6 +47,7 @@
     "eject": "react-scripts eject",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\"",
+    "sync:translations": "pwsh -File ./scripts/sync-eco-zh-cn.ps1",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
   },

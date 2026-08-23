@@ -9,6 +9,7 @@ import {
 } from '../common/state/state';
 import { SkillLevelSelect } from './skill-level.select';
 import { UpgradeLevelSelect } from './upgrade-level.select';
+import { localizeGameText } from '../../data/localization';
 
 interface SkillSegmentProps {
   dispatch: React.Dispatch<Action>;
@@ -26,11 +27,11 @@ export const SkillSegment: React.FC<SkillSegmentProps> = ({
         <React.Fragment key={profession.name}>
           <FlexItem>
             <Typography variant="h6" component="div">
-              {profession.displayName}
+              {localizeGameText(profession.displayName)}
               {profession.level >= 6 && (
                 <div>
                   <FormControlLabel
-                    label="Lavish Workspace Bonus?"
+                    label="豪华工作空间加成"
                     sx={{ marginLeft: 0 }}
                     labelPlacement="start"
                     control={
@@ -61,7 +62,7 @@ export const SkillSegment: React.FC<SkillSegmentProps> = ({
               .map((craftingStation) => (
                 <FlexItem key={craftingStation.name}>
                   <Typography variant="subtitle2">
-                    {craftingStation.name}
+                    {localizeGameText(craftingStation.name)}
                   </Typography>
                   <UpgradeLevelSelect
                     dispatch={dispatch}

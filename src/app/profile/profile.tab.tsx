@@ -17,14 +17,14 @@ export const ProfileTab: React.FC = () => {
     <Grid
       container
       spacing={1}
-      columns={16}
-      sx={{ padding: 2, height: '100%' }}
+      columns={{ xs: 1, md: 16 }}
+      sx={{ padding: { xs: 1, md: 2 }, height: '100%' }}
     >
-      <Grid item xs={showProfile ? 3 : 1}>
+      <Grid item xs={1} md={showProfile ? 3 : 1}>
         <Settings isVisible={showProfile} setIsVisible={setShowProfile} />
       </Grid>
-      <Grid item xs={showProfile ? 4 : 5}>
-        <Section heading="Skills and Crafting Stations">
+      <Grid item xs={1} md={showProfile ? 4 : 5}>
+        <Section heading="技能与制作站">
           <SkillSegment
             dispatch={dispatch}
             craftingStations={activeProfile.craftingStations}
@@ -32,8 +32,8 @@ export const ProfileTab: React.FC = () => {
           />
         </Section>
       </Grid>
-      <Grid item xs={showProfile ? 4 : 5}>
-        <Section heading="Inputs">
+      <Grid item xs={1} md={showProfile ? 4 : 5}>
+        <Section heading="原料">
           <Ingredients
             dispatch={dispatch}
             byproducts={activeProfile.byproducts}
@@ -41,8 +41,8 @@ export const ProfileTab: React.FC = () => {
           />
         </Section>
       </Grid>
-      <Grid item xs={5}>
-        <Section heading="Products">
+      <Grid item xs={1} md={5}>
+        <Section heading="产品">
           <Product
             dispatch={dispatch}
             data={activeProfile.data}

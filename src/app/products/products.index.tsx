@@ -27,6 +27,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import React from 'react';
 import { FlexItem } from '../common/flex-grid-item';
 import { NumberInput } from '../common/number-input';
+import { localizeGameText } from '../../data/localization';
 
 interface ProductProps {
   dispatch: React.Dispatch<Action>;
@@ -79,6 +80,7 @@ const ProductRow: React.FC<ProductRowProps> = ({
     <>
       <div>
         <IconButton
+          aria-label={`移除${localizeGameText(product.displayName)}`}
           onClick={() => {
             itemRecipes.forEach((recipe) => {
               dispatch({
@@ -90,7 +92,9 @@ const ProductRow: React.FC<ProductRowProps> = ({
         >
           <ClearIcon />
         </IconButton>
-        <Typography component="span">{product.displayName}</Typography>
+        <Typography component="span">
+          {localizeGameText(product.displayName)}
+        </Typography>
         <Typography sx={{ float: 'right', paddingRight: 2 }} component="span">
           <PriceDisplay price={product.price} />
           <RecipeSettings
@@ -104,6 +108,7 @@ const ProductRow: React.FC<ProductRowProps> = ({
         itemRecipes.map((recipe) => (
           <Box key={recipe.name} sx={{ paddingLeft: 3 }}>
             <IconButton
+              aria-label={`移除配方${localizeGameText(recipe.name)}`}
               size="small"
               onClick={() => {
                 dispatch({
@@ -114,7 +119,9 @@ const ProductRow: React.FC<ProductRowProps> = ({
             >
               <ClearIcon />
             </IconButton>
-            <Typography component="span">{recipe.name}</Typography>
+            <Typography component="span">
+              {localizeGameText(recipe.name)}
+            </Typography>
             <Typography
               sx={{ float: 'right', paddingRight: 2 }}
               component="span"
@@ -163,15 +170,21 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
 
   return (
     <>
-      <IconButton size="small" onClick={() => setIsDialogVisible(true)}>
+      <IconButton
+        aria-label={`配置配方${localizeGameText(primaryRecipe.name)}`}
+        size="small"
+        onClick={() => setIsDialogVisible(true)}
+      >
         <SettingsIcon color={isOriginal ? undefined : 'primary'} />
       </IconButton>
       <Dialog open={isDialogVisible} onClose={() => setIsDialogVisible(false)}>
-        <DialogTitle>Configure Recipe: {primaryRecipe.name}</DialogTitle>
+        <DialogTitle>
+          配方设置：{localizeGameText(primaryRecipe.name)}
+        </DialogTitle>
         <DialogContent>
           <Stack>
             <FlexItem>
-              <Typography component="span">Profit Margin</Typography>
+              <Typography component="span">利润率</Typography>
               <NumberInput
                 value={margin}
                 onChange={(event) => {
@@ -187,7 +200,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
               />
             </FlexItem>
             <FlexItem>
-              <Typography component="span">Batch Size</Typography>
+              <Typography component="span">批量数量</Typography>
               <NumberInput
                 value={batchSize}
                 onChange={(event) => {
@@ -198,7 +211,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
               />
             </FlexItem>
             <FlexItem>
-              <Typography component="span">Fixed Cost</Typography>
+              <Typography component="span">固定成本</Typography>
               <NumberInput
                 value={fixedCost}
                 onChange={(event) => {
@@ -218,7 +231,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
               setMargin(primaryRecipe?.margin || 0);
             }}
           >
-            Cancel
+            取消
           </Button>
           <Button
             onClick={() => {
@@ -234,7 +247,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
               setIsDialogVisible(false);
             }}
           >
-            Save
+            保存
           </Button>
         </DialogActions>
       </Dialog>

@@ -17,7 +17,13 @@ export const Profiles: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%', height: '100%' }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+      <Box
+        sx={{
+          borderBottom: 1,
+          borderColor: 'divider',
+          display: 'flex',
+        }}
+      >
         <Tabs
           value={activeProfile}
           onChange={(_, newValue) =>
@@ -26,15 +32,21 @@ export const Profiles: React.FC = () => {
               activeProfileId: newValue,
             })
           }
-          aria-label="Profile Tabs"
+          aria-label="成本计算方案"
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ flexGrow: 1 }}
         >
           {Array.from(profiles.values()).map((profile) => (
             <Tab label={profile.name} value={profile.id} key={profile.id} />
           ))}
-          <IconButton onClick={() => setIsDialogVisible(true)}>
-            <AddIcon />
-          </IconButton>
         </Tabs>
+        <IconButton
+          aria-label="新建方案"
+          onClick={() => setIsDialogVisible(true)}
+        >
+          <AddIcon />
+        </IconButton>
       </Box>
       {isDialogVisible && (
         <ProfileConfigDialog

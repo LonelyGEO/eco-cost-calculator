@@ -5,6 +5,9 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
   },
+  typography: {
+    fontFamily: '"Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif',
+  },
 });
 
 export default theme;

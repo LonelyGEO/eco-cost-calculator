@@ -33,13 +33,11 @@ export const ProfileConfigDialog: React.FC<ProfileConfigProps> = ({
   return (
     <Dialog open={open} onClose={() => onClose()} keepMounted={false}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogTitle>
-          {isNewProfile ? 'Create new Profile' : 'Edit Profile'}
-        </DialogTitle>
+        <DialogTitle>{isNewProfile ? '新建方案' : '编辑方案'}</DialogTitle>
         <DialogContent>
           <TextField
             margin="dense"
-            label="Profile Name"
+            label="方案名称"
             fullWidth
             variant="standard"
             error={Boolean(errors.name)}
@@ -49,9 +47,9 @@ export const ProfileConfigDialog: React.FC<ProfileConfigProps> = ({
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => onClose()}>Cancel</Button>
+          <Button onClick={() => onClose()}>取消</Button>
           <Button type="submit">
-            {isNewProfile ? 'Create Profile' : 'Update Profile'}
+            {isNewProfile ? '创建方案' : '保存方案'}
           </Button>
         </DialogActions>
       </form>

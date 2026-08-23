@@ -82,7 +82,7 @@ export interface Profiles {
 
 export const initialState: AppState = {
   id: Math.random(),
-  name: 'Default',
+  name: '默认方案',
   calorieCost: 0,
   margin: 0,
   inputs: new Map(),
@@ -396,5 +396,11 @@ export function serializeState(state: Profiles): string {
 }
 
 export function deserializeState(serialized: string): Profiles {
-  return JSON.parse(serialized, reviver);
+  const state: Profiles = JSON.parse(serialized, reviver);
+
+  state.profiles.forEach((profile) => {
+    if (profile.name === 'Default') profile.name = '默认方案';
+  });
+
+  return state;
 }
