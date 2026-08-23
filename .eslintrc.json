@@ -12,6 +12,12 @@
     "react-app"
   ],
   "rules": {
+    "prettier/prettier": [
+      "error",
+      {
+        "endOfLine": "auto"
+      }
+    ],
     "react/jsx-key": [
       "error",
       {
