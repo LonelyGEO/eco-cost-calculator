@@ -1,4 +1,6 @@
 import ClearIcon from '@mui/icons-material/Clear';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   Box,
   Button,
@@ -47,7 +49,20 @@ export const Product: React.FC<ProductProps> = ({
   recipes,
   data,
 }) => {
-  const productRows = buildProductTree(products, recipes);
+  const productForest = buildProductForest(products, recipes);
+  const [collapsedProducts, setCollapsedProducts] = React.useState<Set<string>>(
+    () => new Set(),
+  );
+
+  const toggleProduct = (productName: string) => {
+    setCollapsedProducts((current) => {
+      const next = new Set(current);
+      if (next.has(productName)) next.delete(productName);
+      else next.add(productName);
+      return next;
+    });
+  };
+
   return (
     <Stack>
       <RecipeAutocomplete
@@ -55,19 +70,31 @@ export const Product: React.FC<ProductProps> = ({
         selectedRecipes={recipes}
         data={data}
       />
-      {productRows.map(({ product, depth }) => (
-        <ProductRow
-          key={product.name}
-          dispatch={dispatch}
-          recipes={recipes}
-          product={product}
-          data={data}
-          depth={depth}
-        />
-      ))}
+      <Box
+        component="ul"
+        aria-label="产品成本树"
+        sx={{ listStyle: 'none', m: 0, p: 0 }}
+      >
+        {productForest.map((node) => (
+          <ProductTreeBranch
+            key={node.product.name}
+            node={node}
+            dispatch={dispatch}
+            recipes={recipes}
+            data={data}
+            collapsedProducts={collapsedProducts}
+            onToggle={toggleProduct}
+          />
+        ))}
+      </Box>
     </Stack>
   );
 };
+
+export interface ProductTreeNode {
+  product: Item;
+  children: ProductTreeNode[];
+}
 
 export interface ProductTreeRow {
   product: Item;
@@ -78,6 +105,19 @@ export function buildProductTree(
   products: ItemMap,
   recipes: CraftingRecipeMap,
 ): ProductTreeRow[] {
+  const result: ProductTreeRow[] = [];
+  const visit = (node: ProductTreeNode, depth: number) => {
+    result.push({ product: node.product, depth });
+    node.children.forEach((child) => visit(child, depth + 1));
+  };
+  buildProductForest(products, recipes).forEach((node) => visit(node, 0));
+  return result;
+}
+
+export function buildProductForest(
+  products: ItemMap,
+  recipes: CraftingRecipeMap,
+): ProductTreeNode[] {
   const productList = Array.from(products.values());
   const productNames = new Set(productList.map(({ name }) => name));
   const childrenByParent = new Map<string, Set<string>>();
@@ -100,31 +140,132 @@ export function buildProductTree(
     });
   });
 
-  const result: ProductTreeRow[] = [];
   const visited = new Set<string>();
-  const visit = (product: Item, depth: number) => {
-    if (visited.has(product.name)) return;
+  const buildNode = (product: Item): ProductTreeNode | undefined => {
+    if (visited.has(product.name)) return undefined;
     visited.add(product.name);
-    result.push({ product, depth });
     const children = childrenByParent.get(product.name) ?? new Set<string>();
-    productList
-      .filter((candidate) => children.has(candidate.name))
-      .forEach((child) => visit(child, depth + 1));
+    return {
+      product,
+      children: productList
+        .filter((candidate) => children.has(candidate.name))
+        .map(buildNode)
+        .filter((child): child is ProductTreeNode => child !== undefined),
+    };
   };
 
-  productList
+  const roots = productList
     .filter((product) => !childNames.has(product.name))
-    .forEach((product) => visit(product, 0));
-  productList.forEach((product) => visit(product, 0));
-  return result;
+    .map(buildNode)
+    .filter((node): node is ProductTreeNode => node !== undefined);
+  productList.forEach((product) => {
+    const node = buildNode(product);
+    if (node) roots.push(node);
+  });
+  return roots;
 }
+
+interface ProductTreeBranchProps {
+  node: ProductTreeNode;
+  dispatch: React.Dispatch<Action>;
+  recipes: CraftingRecipeMap;
+  data: Recipe[];
+  collapsedProducts: Set<string>;
+  onToggle: (productName: string) => void;
+  nested?: boolean;
+}
+
+const ProductTreeBranch: React.FC<ProductTreeBranchProps> = ({
+  node,
+  dispatch,
+  recipes,
+  data,
+  collapsedProducts,
+  onToggle,
+  nested = false,
+}) => {
+  const hasChildren = node.children.length > 0;
+  const collapsed = collapsedProducts.has(node.product.name);
+
+  return (
+    <Box
+      component="li"
+      sx={{
+        listStyle: 'none',
+        position: 'relative',
+        ...(nested && {
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            zIndex: 1,
+            top: 20,
+            left: -9,
+            width: 9,
+            borderTop: 1,
+            borderColor: 'divider',
+          },
+          '&:last-of-type::after': {
+            content: '""',
+            position: 'absolute',
+            zIndex: 0,
+            top: 21,
+            bottom: 0,
+            left: -9,
+            width: 2,
+            bgcolor: 'background.paper',
+          },
+        }),
+      }}
+    >
+      <ProductRow
+        dispatch={dispatch}
+        recipes={recipes}
+        product={node.product}
+        data={data}
+        hasChildren={hasChildren}
+        collapsed={collapsed}
+        onToggle={() => onToggle(node.product.name)}
+      />
+      {hasChildren && !collapsed && (
+        <Box
+          component="ul"
+          role="group"
+          sx={{
+            listStyle: 'none',
+            m: 0,
+            ml: 1,
+            p: 0,
+            pl: 1,
+            borderLeft: 1,
+            borderColor: 'divider',
+          }}
+        >
+          {node.children.map((child) => (
+            <ProductTreeBranch
+              key={child.product.name}
+              node={child}
+              dispatch={dispatch}
+              recipes={recipes}
+              data={data}
+              collapsedProducts={collapsedProducts}
+              onToggle={onToggle}
+              nested
+            />
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+};
 
 interface ProductRowProps {
   dispatch: React.Dispatch<Action>;
   product: Item;
   recipes: CraftingRecipeMap;
   data: Recipe[];
-  depth: number;
+  hasChildren: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
 const ProductRow: React.FC<ProductRowProps> = ({
@@ -132,7 +273,9 @@ const ProductRow: React.FC<ProductRowProps> = ({
   recipes,
   product,
   data,
-  depth,
+  hasChildren,
+  collapsed,
+  onToggle,
 }) => {
   const itemRecipes = Array.from(product.productOfRecipes)
     .map((recipeName) => getRecipeOrThrow(recipes, recipeName))
@@ -149,11 +292,32 @@ const ProductRow: React.FC<ProductRowProps> = ({
       sx={{
         display: 'flex',
         alignItems: 'center',
+        minHeight: 40,
         minWidth: 0,
-        pl: Math.min(depth, 4) * 2,
+        position: 'relative',
+        zIndex: 1,
+        borderRadius: 1,
+        '&:hover': { bgcolor: 'action.hover' },
       }}
     >
+      {hasChildren ? (
+        <Tooltip title={collapsed ? '展开下级产品' : '折叠下级产品'}>
+          <IconButton
+            size="small"
+            aria-label={`${collapsed ? '展开' : '折叠'}${localizeGameText(
+              product.displayName,
+            )}的下级产品`}
+            aria-expanded={!collapsed}
+            onClick={onToggle}
+          >
+            {collapsed ? <ChevronRightIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Box aria-hidden sx={{ width: 34, flexShrink: 0 }} />
+      )}
       <IconButton
+        size="small"
         aria-label={`移除${localizeGameText(product.displayName)}`}
         onClick={() => {
           itemRecipes.forEach((recipe) => {
@@ -166,16 +330,6 @@ const ProductRow: React.FC<ProductRowProps> = ({
       >
         <ClearIcon />
       </IconButton>
-      {depth > 0 && (
-        <Typography
-          component="span"
-          color="text.secondary"
-          aria-label={`次级产品，第 ${depth} 层`}
-          sx={{ mr: 0.75, fontFamily: 'monospace', flexShrink: 0 }}
-        >
-          └─
-        </Typography>
-      )}
       <Typography component="span" noWrap sx={{ minWidth: 0, flex: 1 }}>
         {localizeGameText(product.displayName)}
       </Typography>
