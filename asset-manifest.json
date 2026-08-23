@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/eco-cost-calculator/static/css/main.06550dc7.css",
-    "main.js": "/eco-cost-calculator/static/js/main.269766f9.js",
+    "main.js": "/eco-cost-calculator/static/js/main.d7b5a93b.js",
     "static/js/787.4c7f7380.chunk.js": "/eco-cost-calculator/static/js/787.4c7f7380.chunk.js",
     "index.html": "/eco-cost-calculator/index.html",
     "main.06550dc7.css.map": "/eco-cost-calculator/static/css/main.06550dc7.css.map",
-    "main.269766f9.js.map": "/eco-cost-calculator/static/js/main.269766f9.js.map",
+    "main.d7b5a93b.js.map": "/eco-cost-calculator/static/js/main.d7b5a93b.js.map",
     "787.4c7f7380.chunk.js.map": "/eco-cost-calculator/static/js/787.4c7f7380.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.06550dc7.css",
-    "static/js/main.269766f9.js"
+    "static/js/main.d7b5a93b.js"
   ]
 }
