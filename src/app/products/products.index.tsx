@@ -2,13 +2,18 @@ import ClearIcon from '@mui/icons-material/Clear';
 import {
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   IconButton,
   InputAdornment,
+  List,
+  ListItemButton,
+  ListItemText,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { Recipe } from '../../data/recipes';
@@ -24,6 +29,7 @@ import { getRecipeOrThrow } from '../common/state/state-getters';
 import { PriceDisplay } from './price-display';
 import { RecipeAutocomplete } from './recipe.autocomplete';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import React from 'react';
 import { FlexItem } from '../common/flex-grid-item';
 import { NumberInput } from '../common/number-input';
@@ -41,6 +47,7 @@ export const Product: React.FC<ProductProps> = ({
   recipes,
   data,
 }) => {
+  const productRows = buildProductTree(products, recipes);
   return (
     <Stack>
       <RecipeAutocomplete
@@ -48,110 +55,246 @@ export const Product: React.FC<ProductProps> = ({
         selectedRecipes={recipes}
         data={data}
       />
-      {Array.from(products.values()).map((product) => (
+      {productRows.map(({ product, depth }) => (
         <ProductRow
           key={product.name}
           dispatch={dispatch}
           recipes={recipes}
           product={product}
+          data={data}
+          depth={depth}
         />
       ))}
     </Stack>
   );
 };
+
+export interface ProductTreeRow {
+  product: Item;
+  depth: number;
+}
+
+export function buildProductTree(
+  products: ItemMap,
+  recipes: CraftingRecipeMap,
+): ProductTreeRow[] {
+  const productList = Array.from(products.values());
+  const productNames = new Set(productList.map(({ name }) => name));
+  const childrenByParent = new Map<string, Set<string>>();
+  const childNames = new Set<string>();
+
+  productList.forEach((product) => {
+    product.usedInRecipes.forEach((recipeName) => {
+      const parentRecipe = recipes.get(recipeName);
+      const parentName = parentRecipe?.mainProduct.name;
+      if (
+        !parentName ||
+        parentName === product.name ||
+        !productNames.has(parentName)
+      )
+        return;
+      const children = childrenByParent.get(parentName) ?? new Set<string>();
+      children.add(product.name);
+      childrenByParent.set(parentName, children);
+      childNames.add(product.name);
+    });
+  });
+
+  const result: ProductTreeRow[] = [];
+  const visited = new Set<string>();
+  const visit = (product: Item, depth: number) => {
+    if (visited.has(product.name)) return;
+    visited.add(product.name);
+    result.push({ product, depth });
+    const children = childrenByParent.get(product.name) ?? new Set<string>();
+    productList
+      .filter((candidate) => children.has(candidate.name))
+      .forEach((child) => visit(child, depth + 1));
+  };
+
+  productList
+    .filter((product) => !childNames.has(product.name))
+    .forEach((product) => visit(product, 0));
+  productList.forEach((product) => visit(product, 0));
+  return result;
+}
+
 interface ProductRowProps {
   dispatch: React.Dispatch<Action>;
   product: Item;
   recipes: CraftingRecipeMap;
+  data: Recipe[];
+  depth: number;
 }
 
 const ProductRow: React.FC<ProductRowProps> = ({
   dispatch,
   recipes,
   product,
+  data,
+  depth,
 }) => {
   const itemRecipes = Array.from(product.productOfRecipes)
     .map((recipeName) => getRecipeOrThrow(recipes, recipeName))
     .filter((recipe) => {
       return recipe.mainProduct.name === product.name;
     });
+  const primaryRecipe = itemRecipes[0];
+  const availableRecipes = data.filter(
+    (recipe) => recipe.mainProduct.name === product.name,
+  );
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        minWidth: 0,
+        pl: Math.min(depth, 4) * 2,
+      }}
+    >
+      <IconButton
+        aria-label={`移除${localizeGameText(product.displayName)}`}
+        onClick={() => {
+          itemRecipes.forEach((recipe) => {
+            dispatch({
+              type: ActionType.REMOVE_RECIPE,
+              removedRecipe: recipe,
+            });
+          });
+        }}
+      >
+        <ClearIcon />
+      </IconButton>
+      {depth > 0 && (
+        <Typography
+          component="span"
+          color="text.secondary"
+          aria-label={`次级产品，第 ${depth} 层`}
+          sx={{ mr: 0.75, fontFamily: 'monospace', flexShrink: 0 }}
+        >
+          └─
+        </Typography>
+      )}
+      <Typography component="span" noWrap sx={{ minWidth: 0, flex: 1 }}>
+        {localizeGameText(product.displayName)}
+      </Typography>
+      <Stack direction="row" alignItems="center" sx={{ flexShrink: 0, pr: 1 }}>
+        <PriceDisplay price={product.price} />
+        <RecipeRouteSelector
+          dispatch={dispatch}
+          product={product}
+          currentRecipe={primaryRecipe}
+          availableRecipes={availableRecipes}
+        />
+        {primaryRecipe && (
+          <RecipeSettings
+            key={primaryRecipe.name}
+            dispatch={dispatch}
+            recipe={primaryRecipe}
+          />
+        )}
+      </Stack>
+    </Box>
+  );
+};
+
+interface RecipeRouteSelectorProps {
+  dispatch: React.Dispatch<Action>;
+  product: Item;
+  currentRecipe?: CraftingRecipe;
+  availableRecipes: Recipe[];
+}
+
+const RecipeRouteSelector: React.FC<RecipeRouteSelectorProps> = ({
+  dispatch,
+  product,
+  currentRecipe,
+  availableRecipes,
+}) => {
+  const [open, setOpen] = React.useState(false);
+  if (availableRecipes.length < 2) return null;
 
   return (
     <>
-      <div>
+      <Tooltip title={`切换生产配方（共 ${availableRecipes.length} 条）`}>
         <IconButton
-          aria-label={`移除${localizeGameText(product.displayName)}`}
-          onClick={() => {
-            itemRecipes.forEach((recipe) => {
-              dispatch({
-                type: ActionType.REMOVE_RECIPE,
-                removedRecipe: recipe,
-              });
-            });
-          }}
+          size="small"
+          aria-label={`切换${localizeGameText(product.displayName)}的生产配方`}
+          onClick={() => setOpen(true)}
         >
-          <ClearIcon />
+          <SwapHorizIcon />
         </IconButton>
-        <Typography component="span">
-          {localizeGameText(product.displayName)}
-        </Typography>
-        <Typography sx={{ float: 'right', paddingRight: 2 }} component="span">
-          <PriceDisplay price={product.price} />
-          <RecipeSettings
-            dispatch={dispatch}
-            product={product}
-            recipes={itemRecipes}
-          />
-        </Typography>
-      </div>
-      {itemRecipes.length > 1 &&
-        itemRecipes.map((recipe) => (
-          <Box key={recipe.name} sx={{ paddingLeft: 3 }}>
-            <IconButton
-              aria-label={`移除配方${
-                recipe.localizedName || recipe.displayName
-              }`}
-              size="small"
-              onClick={() => {
-                dispatch({
-                  type: ActionType.REMOVE_RECIPE,
-                  removedRecipe: recipe,
-                });
-              }}
-            >
-              <ClearIcon />
-            </IconButton>
-            <Typography component="span">
-              {recipe.localizedName || recipe.displayName}
-            </Typography>
-            <Typography
-              sx={{ float: 'right', paddingRight: 2 }}
-              component="span"
-            >
-              <PriceDisplay price={recipe.price} />
-              <RecipeSettings
-                dispatch={dispatch}
-                product={product}
-                recipes={[recipe]}
-              />
-            </Typography>
-          </Box>
-        ))}
+      </Tooltip>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          选择“{localizeGameText(product.displayName)}”的生产配方
+        </DialogTitle>
+        <DialogContent>
+          <List sx={{ pt: 1 }}>
+            {availableRecipes.map((recipe) => {
+              const selected = recipe.name === currentRecipe?.name;
+              const ingredientSummary = recipe.ingredients
+                .map(
+                  (ingredient) =>
+                    `${ingredient.localizedName || ingredient.displayName} × ${
+                      ingredient.quantity
+                    }`,
+                )
+                .join('、');
+              return (
+                <ListItemButton
+                  key={recipe.name}
+                  selected={selected}
+                  onClick={() => {
+                    dispatch({
+                      type: ActionType.SWITCH_PRODUCT_RECIPE,
+                      recipe,
+                    });
+                    setOpen(false);
+                  }}
+                  sx={{ borderRadius: 1, mb: 1 }}
+                >
+                  <ListItemText
+                    primary={
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography fontWeight={700}>
+                          {recipe.localizedName || recipe.displayName}
+                        </Typography>
+                        {selected && <Chip size="small" label="当前使用" />}
+                      </Stack>
+                    }
+                    secondary={`${recipe.tableLocalizedName} · ${
+                      recipe.professions[0].localizedName ||
+                      recipe.professions[0].displayName
+                    } · ${ingredientSummary}`}
+                  />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>取消</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
 
 interface RecipeSettingsProps {
   dispatch: React.Dispatch<Action>;
-  product: Item;
-  recipes: CraftingRecipe[];
+  recipe: CraftingRecipe;
 }
 const RecipeSettings: React.FC<RecipeSettingsProps> = ({
   dispatch,
-  recipes,
+  recipe: primaryRecipe,
 }) => {
-  const primaryRecipe: CraftingRecipe | undefined = recipes[0];
-
   const [batchSize, setBatchSize] = React.useState(
     primaryRecipe?.batchSize || 0,
   );
@@ -168,8 +311,6 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
     () => batchSize === 0 && margin === 0 && fixedCost === 0,
     [batchSize, margin, fixedCost],
   );
-  if (recipes.length > 1) return <IconButton sx={{ width: 34 }} />;
-
   return (
     <>
       <IconButton

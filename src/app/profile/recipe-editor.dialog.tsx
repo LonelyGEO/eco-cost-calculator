@@ -17,6 +17,7 @@ import {
   MenuItem,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import React from 'react';
@@ -350,67 +351,104 @@ export const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
 
               <Typography variant="h6">原料</Typography>
               {draft.ingredients.map((ingredient, index) => (
-                <Stack
+                <Box
                   key={`${index}-${ingredient.name ?? ingredient.tag}`}
-                  direction={{ xs: 'column', md: 'row' }}
-                  spacing={1}
+                  sx={{
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    p: 2,
+                    bgcolor: 'background.default',
+                  }}
                 >
-                  <TextField
-                    select
-                    label="类型"
-                    value={ingredient.tag ? 'tag' : 'item'}
-                    sx={{ minWidth: 100 }}
-                    onChange={(event) => {
-                      const key = ingredient.name ?? ingredient.tag ?? '';
-                      updateIngredient(
-                        index,
-                        event.target.value === 'tag'
-                          ? { name: null, tag: key }
-                          : { name: key, tag: null },
-                      );
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{ mb: 1.5 }}
+                  >
+                    <Typography fontWeight={700}>原料 {index + 1}</Typography>
+                    <Tooltip title="删除这项原料">
+                      <IconButton
+                        size="small"
+                        aria-label={`删除原料 ${index + 1}`}
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            ingredients: draft.ingredients.filter(
+                              (_, itemIndex) => itemIndex !== index,
+                            ),
+                          })
+                        }
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        md: '120px minmax(220px, 1.2fr) minmax(180px, 1fr) 110px',
+                      },
+                      gap: 1.5,
                     }}
                   >
-                    <MenuItem value="item">物品</MenuItem>
-                    <MenuItem value="tag">标签</MenuItem>
-                  </TextField>
-                  <TextField
-                    fullWidth
-                    label="物品/标签内部标识"
-                    value={ingredient.name ?? ingredient.tag ?? ''}
-                    onChange={(event) =>
-                      updateIngredient(
-                        index,
-                        ingredient.tag
-                          ? { tag: event.target.value }
-                          : { name: event.target.value },
-                      )
-                    }
-                  />
-                  <TextField
-                    fullWidth
-                    label="中文名称"
-                    value={ingredient.localizedName}
-                    onChange={(event) =>
-                      updateIngredient(index, {
-                        localizedName: event.target.value,
-                        displayName:
-                          ingredient.displayName || event.target.value,
-                      })
-                    }
-                  />
-                  <TextField
-                    label="数量"
-                    type="number"
-                    value={ingredient.quantity}
-                    sx={{ minWidth: 100 }}
-                    onChange={(event) =>
-                      updateIngredient(index, {
-                        quantity: Number(event.target.value),
-                      })
-                    }
-                  />
+                    <TextField
+                      select
+                      label="类型"
+                      value={ingredient.tag ? 'tag' : 'item'}
+                      onChange={(event) => {
+                        const key = ingredient.name ?? ingredient.tag ?? '';
+                        updateIngredient(
+                          index,
+                          event.target.value === 'tag'
+                            ? { name: null, tag: key }
+                            : { name: key, tag: null },
+                        );
+                      }}
+                    >
+                      <MenuItem value="item">物品</MenuItem>
+                      <MenuItem value="tag">标签</MenuItem>
+                    </TextField>
+                    <TextField
+                      label="物品/标签内部标识"
+                      value={ingredient.name ?? ingredient.tag ?? ''}
+                      onChange={(event) =>
+                        updateIngredient(
+                          index,
+                          ingredient.tag
+                            ? { tag: event.target.value }
+                            : { name: event.target.value },
+                        )
+                      }
+                    />
+                    <TextField
+                      label="中文名称"
+                      value={ingredient.localizedName}
+                      onChange={(event) =>
+                        updateIngredient(index, {
+                          localizedName: event.target.value,
+                          displayName:
+                            ingredient.displayName || event.target.value,
+                        })
+                      }
+                    />
+                    <TextField
+                      label="数量"
+                      type="number"
+                      value={ingredient.quantity}
+                      onChange={(event) =>
+                        updateIngredient(index, {
+                          quantity: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </Box>
                   <FormControlLabel
                     label="受模块影响"
+                    sx={{ mt: 1, ml: 0, whiteSpace: 'nowrap' }}
                     control={
                       <Checkbox
                         checked={ingredient.modifiers.some(
@@ -428,23 +466,11 @@ export const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
                       />
                     }
                   />
-                  <IconButton
-                    aria-label="删除原料"
-                    onClick={() =>
-                      setDraft({
-                        ...draft,
-                        ingredients: draft.ingredients.filter(
-                          (_, itemIndex) => itemIndex !== index,
-                        ),
-                      })
-                    }
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Stack>
+                </Box>
               ))}
               <Button
                 startIcon={<AddIcon />}
+                sx={{ alignSelf: 'flex-start' }}
                 onClick={() =>
                   setDraft({
                     ...draft,
@@ -470,90 +496,134 @@ export const RecipeEditorDialog: React.FC<RecipeEditorDialogProps> = ({
 
               <Typography variant="h6">产品与副产品</Typography>
               {draft.products.map((product, index) => (
-                <Stack
+                <Box
                   key={`${index}-${product.name}`}
-                  direction={{ xs: 'column', md: 'row' }}
-                  spacing={1}
+                  sx={{
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    p: 2,
+                    bgcolor: 'background.default',
+                  }}
                 >
-                  <TextField
-                    fullWidth
-                    label="物品内部标识"
-                    value={product.name}
-                    onChange={(event) =>
-                      updateProduct(index, { name: event.target.value })
-                    }
-                  />
-                  <TextField
-                    fullWidth
-                    label="中文名称"
-                    value={product.localizedName}
-                    onChange={(event) =>
-                      updateProduct(index, {
-                        localizedName: event.target.value,
-                        displayName: product.displayName || event.target.value,
-                      })
-                    }
-                  />
-                  <TextField
-                    label="数量"
-                    type="number"
-                    value={product.quantity}
-                    sx={{ minWidth: 100 }}
-                    onChange={(event) =>
-                      updateProduct(index, {
-                        quantity: Number(event.target.value),
-                      })
-                    }
-                  />
-                  <FormControlLabel
-                    label="受产量加成影响"
-                    control={
-                      <Checkbox
-                        checked={product.modifiers.some(
-                          (modifier) => modifier.dynamicType === 'Module',
-                        )}
-                        onChange={(event) =>
-                          updateProduct(index, {
-                            modifiers: moduleModifiers(
-                              product.modifiers,
-                              event.target.checked,
-                            ),
-                            isConstant: !event.target.checked,
-                          })
-                        }
-                      />
-                    }
-                  />
-                  <FormControlLabel
-                    label="返还原料"
-                    control={
-                      <Checkbox
-                        checked={product.isRefund}
-                        onChange={(event) =>
-                          updateProduct(index, {
-                            isRefund: event.target.checked,
-                          })
-                        }
-                      />
-                    }
-                  />
-                  <IconButton
-                    aria-label="删除产品"
-                    onClick={() =>
-                      setDraft({
-                        ...draft,
-                        products: draft.products.filter(
-                          (_, itemIndex) => itemIndex !== index,
-                        ),
-                      })
-                    }
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{ mb: 1.5 }}
                   >
-                    <DeleteIcon />
-                  </IconButton>
-                </Stack>
+                    <Typography fontWeight={700}>
+                      {index ===
+                      draft.products.findIndex(
+                        (candidate) => !candidate.isRefund,
+                      )
+                        ? '主产品'
+                        : `副产品 ${index + 1}`}
+                    </Typography>
+                    <Tooltip title="删除这项产品">
+                      <IconButton
+                        size="small"
+                        aria-label={`删除产品 ${index + 1}`}
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            products: draft.products.filter(
+                              (_, itemIndex) => itemIndex !== index,
+                            ),
+                          })
+                        }
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        md: 'minmax(240px, 1.2fr) minmax(200px, 1fr) 110px',
+                      },
+                      gap: 1.5,
+                    }}
+                  >
+                    <TextField
+                      label="物品内部标识"
+                      value={product.name}
+                      onChange={(event) =>
+                        updateProduct(index, { name: event.target.value })
+                      }
+                    />
+                    <TextField
+                      label="中文名称"
+                      value={product.localizedName}
+                      onChange={(event) =>
+                        updateProduct(index, {
+                          localizedName: event.target.value,
+                          displayName:
+                            product.displayName || event.target.value,
+                        })
+                      }
+                    />
+                    <TextField
+                      label="数量"
+                      type="number"
+                      value={product.quantity}
+                      onChange={(event) =>
+                        updateProduct(index, {
+                          quantity: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </Box>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 2,
+                      mt: 1,
+                    }}
+                  >
+                    <FormControlLabel
+                      label="受产量加成影响"
+                      sx={{ m: 0, whiteSpace: 'nowrap' }}
+                      control={
+                        <Checkbox
+                          checked={product.modifiers.some(
+                            (modifier) => modifier.dynamicType === 'Module',
+                          )}
+                          onChange={(event) =>
+                            updateProduct(index, {
+                              modifiers: moduleModifiers(
+                                product.modifiers,
+                                event.target.checked,
+                              ),
+                              isConstant: !event.target.checked,
+                            })
+                          }
+                        />
+                      }
+                    />
+                    <FormControlLabel
+                      label="返还原料"
+                      sx={{ m: 0, whiteSpace: 'nowrap' }}
+                      control={
+                        <Checkbox
+                          checked={product.isRefund}
+                          onChange={(event) =>
+                            updateProduct(index, {
+                              isRefund: event.target.checked,
+                            })
+                          }
+                        />
+                      }
+                    />
+                  </Box>
+                </Box>
               ))}
               <Button
                 startIcon={<AddIcon />}
+                sx={{ alignSelf: 'flex-start' }}
                 onClick={() =>
                   setDraft({
                     ...draft,

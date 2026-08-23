@@ -1,10 +1,7 @@
 import { current, original } from 'immer';
 import { Profession, Recipe, recipes } from '../../../data/recipes';
 import { Profile } from '../../layout/content';
-import {
-  processAddRecipeAction,
-  processAddRecipeFromInputAction,
-} from './state-actions/add-recipe.action';
+import { processAddRecipeFromInputAction } from './state-actions/add-recipe.action';
 import { importProfileAction } from './state-actions/import-profile.action';
 import { processRemoveRecipeAction } from './state-actions/remove-recipe.action';
 import { updateRecipeSettingsAction } from './state-actions/set-recipe-settings.action';
@@ -13,6 +10,7 @@ import { updateCraftingStationAction } from './state-actions/update-crafting-sta
 import { updateDataJsonAction } from './state-actions/update-data-json.action';
 import { updateMarginAction } from './state-actions/update-margin.action';
 import { updateProfessionAction } from './state-actions/update-profession-level.action';
+import { switchProductRecipeAction } from './state-actions/switch-product-recipe.action';
 import {
   syncTagSelectionInputs,
   updateTagSelectionAction,
@@ -123,6 +121,7 @@ export const standardProfiles: Profiles = {
 export enum ActionType {
   ADD_RECIPE,
   ADD_RECIPE_FROM_INPUT,
+  SWITCH_PRODUCT_RECIPE,
   UPLOAD_DATA_JSON,
   REMOVE_RECIPE,
   UPDATE_RECIPE_SETTINGS,
@@ -149,6 +148,10 @@ interface AddRecipeAction {
 interface AddRecipeFromInputAction {
   type: ActionType.ADD_RECIPE_FROM_INPUT;
   input: Item;
+}
+interface SwitchProductRecipeAction {
+  type: ActionType.SWITCH_PRODUCT_RECIPE;
+  recipe: Recipe;
 }
 
 interface RemoveRecipeAction {
@@ -249,6 +252,7 @@ interface DeleteActiveProfileAction {
 export type Action =
   | AddRecipeAction
   | AddRecipeFromInputAction
+  | SwitchProductRecipeAction
   | RemoveRecipeAction
   | UpdateItemPriceAction
   | UpdateTagSelectionAction
@@ -327,12 +331,17 @@ function processGlobalAction(draft: Profiles, action: Action): void {
 function processProfileAction(draft: AppState, action: Action): void {
   switch (action.type) {
     case ActionType.ADD_RECIPE:
-      return processAddRecipeAction({ draft, addedRecipe: action.addedRecipe });
+      return switchProductRecipeAction({
+        draft,
+        recipe: action.addedRecipe,
+      });
     case ActionType.ADD_RECIPE_FROM_INPUT:
       return processAddRecipeFromInputAction({
         draft,
         input: action.input,
       });
+    case ActionType.SWITCH_PRODUCT_RECIPE:
+      return switchProductRecipeAction({ draft, recipe: action.recipe });
     case ActionType.REMOVE_RECIPE:
       return processRemoveRecipeAction({
         draft,
