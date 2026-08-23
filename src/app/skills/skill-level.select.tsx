@@ -11,11 +11,12 @@ export const SkillLevelSelect: React.FC<SkillLevelSelectProps> = ({
 }) => {
   return (
     <TextField
-      id="outlined-select-currency"
       size="small"
-      margin="dense"
-      sx={{ float: 'right', width: 45 }}
+      label="等级"
+      type="number"
+      sx={{ width: 88, flexShrink: 0 }}
       value={profession.level}
+      inputProps={{ min: 0, max: profession.maxLevel, step: 1 }}
       onChange={(event) => {
         const parsed = parseInt(event.target.value, 10);
 

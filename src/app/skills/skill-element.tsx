@@ -1,6 +1,13 @@
-import { MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import {
+  Box,
+  Divider,
+  MenuItem,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import React from 'react';
-import { FlexItem } from '../common/flex-grid-item';
 import {
   Action,
   ActionType,
@@ -21,64 +28,130 @@ export const SkillSegment: React.FC<SkillSegmentProps> = ({
   craftingStations,
 }) => {
   return (
-    <Stack sx={{ paddingTop: 2 }}>
-      {Array.from(professions.values()).map((profession) => (
-        <React.Fragment key={profession.name}>
-          <FlexItem>
-            <Typography variant="h6" component="div">
-              {profession.localizedName || profession.displayName}
-            </Typography>
-            <SkillLevelSelect dispatch={dispatch} profession={profession} />
-          </FlexItem>
-          <Stack sx={{ paddingLeft: 3, paddingBottom: 1 }} spacing={1}>
-            {Array.from(
-              new Map(
-                profession.talents
-                  .filter((talent) => profession.level >= talent.unlockLevel)
-                  .map((talent) => [talent.groupName, talent]),
-              ).values(),
-            ).map((talent) => (
-              <Tooltip
-                key={talent.groupName}
-                title={talent.description || talent.localizedName}
-              >
-                <TextField
-                  select
-                  size="small"
-                  label={talent.localizedName || talent.displayName}
-                  value={profession.selectedTalents[talent.groupName] ?? 0}
-                  onChange={(event) =>
-                    dispatch({
-                      type: ActionType.UPDATE_PROFESSION,
-                      updatedProfession: {
-                        ...profession,
-                        selectedTalents: {
-                          ...profession.selectedTalents,
-                          [talent.groupName]: Number(event.target.value),
-                        },
-                      },
-                    })
-                  }
+    <Stack spacing={2} sx={{ pt: 2 }}>
+      {Array.from(professions.values()).map((profession) => {
+        const unlockedTalents = Array.from(
+          new Map(
+            profession.talents
+              .filter((talent) => profession.level >= talent.unlockLevel)
+              .map((talent) => [talent.groupName, talent]),
+          ).values(),
+        );
+        const professionStations = Array.from(craftingStations.values()).filter(
+          (station) => station.profession.name === profession.name,
+        );
+
+        return (
+          <Box
+            component="section"
+            key={profession.name}
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 2,
+              overflow: 'hidden',
+              bgcolor: 'background.default',
+            }}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              spacing={2}
+              sx={{ px: 2, py: 1.5, bgcolor: 'action.hover' }}
+            >
+              <Typography variant="h6" component="h5" fontWeight={700}>
+                {profession.localizedName || profession.displayName}
+              </Typography>
+              <SkillLevelSelect dispatch={dispatch} profession={profession} />
+            </Stack>
+
+            {unlockedTalents.length > 0 && (
+              <Box sx={{ px: 2, py: 1.5 }}>
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  component="div"
+                  sx={{ mb: 1 }}
                 >
-                  <MenuItem value={0}>未选择</MenuItem>
-                  {Array.from(
-                    { length: talent.maxLevel },
-                    (_, index) => index + 1,
-                  ).map((level) => (
-                    <MenuItem key={level} value={level}>
-                      {level} 级
-                    </MenuItem>
+                  已解锁天赋
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns:
+                      'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
+                    gap: 1.5,
+                  }}
+                >
+                  {unlockedTalents.map((talent) => (
+                    <Tooltip
+                      key={talent.groupName}
+                      title={talent.description || talent.localizedName}
+                    >
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label={talent.localizedName || talent.displayName}
+                        value={
+                          profession.selectedTalents[talent.groupName] ?? 0
+                        }
+                        onChange={(event) =>
+                          dispatch({
+                            type: ActionType.UPDATE_PROFESSION,
+                            updatedProfession: {
+                              ...profession,
+                              selectedTalents: {
+                                ...profession.selectedTalents,
+                                [talent.groupName]: Number(event.target.value),
+                              },
+                            },
+                          })
+                        }
+                      >
+                        <MenuItem value={0}>未选择</MenuItem>
+                        {Array.from(
+                          { length: talent.maxLevel },
+                          (_, index) => index + 1,
+                        ).map((level) => (
+                          <MenuItem key={level} value={level}>
+                            {level} 级
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Tooltip>
                   ))}
-                </TextField>
-              </Tooltip>
-            ))}
-          </Stack>
-          <Stack sx={{ paddingLeft: 3 }}>
-            {Array.from(craftingStations.values())
-              .filter((station) => station.profession.name === profession.name)
-              .map((craftingStation) => (
-                <FlexItem key={craftingStation.name}>
-                  <Typography variant="subtitle2">
+                </Box>
+              </Box>
+            )}
+
+            <Divider />
+            <Stack spacing={1.5} sx={{ p: 2 }}>
+              <Typography
+                variant="overline"
+                color="text.secondary"
+                component="div"
+              >
+                制作站
+              </Typography>
+              {professionStations.map((craftingStation) => (
+                <Box
+                  key={craftingStation.name}
+                  sx={{
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1.5,
+                    p: 1.5,
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <Typography
+                    variant="subtitle1"
+                    component="h6"
+                    fontWeight={700}
+                    sx={{ mb: 1.25 }}
+                  >
                     {craftingStation.localizedName ||
                       craftingStation.displayName}
                   </Typography>
@@ -86,11 +159,12 @@ export const SkillSegment: React.FC<SkillSegmentProps> = ({
                     dispatch={dispatch}
                     craftingStation={craftingStation}
                   />
-                </FlexItem>
+                </Box>
               ))}
-          </Stack>
-        </React.Fragment>
-      ))}
+            </Stack>
+          </Box>
+        );
+      })}
     </Stack>
   );
 };
