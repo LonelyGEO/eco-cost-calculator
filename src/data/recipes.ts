@@ -1,32 +1,62 @@
-import protoRecipe from './recipes.json';
+import rawEcoData from './eco-data.json';
 
-type ProtoRecipe = typeof protoRecipe;
+export type BonusAction = 'ResourceCost' | 'LaborCost' | 'CraftTime' | 'Yield';
 
-export interface Recipe {
-  ingredients: Ingredient[];
-  mainProduct: Product;
-  byproduct?: Product;
+export type BonusEffectType =
+  | 'Additive'
+  | 'AdditivePercent'
+  | 'CappedMultiplicative'
+  | 'Multiplicative';
+
+export interface Bonus {
+  action: BonusAction;
+  effectType: BonusEffectType;
+  value: number;
+  cap?: number;
+  skillTypes?: string[];
+  excludedSkillTypes?: string[];
+  itemTags?: string[];
+}
+
+export interface Modifier {
+  dynamicType: 'Talent' | 'Skill' | 'Module' | 'Layer' | string;
+  item?: string;
+  valueType?: string;
+}
+
+export interface Talent {
   name: string;
-  calories?: number;
-  experience: number;
-  table: string;
-  professions: Profession[];
+  groupName: string;
+  displayName: string;
+  localizedName: string;
+  description: string;
+  unlockLevel: number;
+  maxLevel: number;
+  bonuses: Bonus[];
 }
 
 export interface Profession {
   name: string;
   displayName: string;
+  localizedName: string;
   level: number;
+  maxLevel: number;
+  laborReducePercent: number[];
+  talents: Talent[];
 }
 
 export interface BaselineItem {
   quantity: number;
+  modifiers: Modifier[];
   isConstant: boolean;
   displayName: string;
+  localizedName: string;
 }
 
 export interface Product extends BaselineItem {
   name: string;
+  itemTags: string[];
+  isRefund: boolean;
 }
 
 export interface TagIngredient extends BaselineItem {
@@ -41,55 +71,266 @@ export interface ItemIngredient extends BaselineItem {
 
 export type Ingredient = ItemIngredient | TagIngredient;
 
-export const recipes: Recipe[] = recipesFromJson(protoRecipe);
+export interface Recipe {
+  name: string;
+  displayName: string;
+  localizedName: string;
+  familyName: string;
+  isBlueprint: boolean;
+  isDefault: boolean;
+  ingredients: Ingredient[];
+  products: Product[];
+  mainProduct: Product;
+  byproducts: Product[];
+  calories: number;
+  laborModifiers: Modifier[];
+  craftMinutes: number;
+  craftMinuteModifiers: Modifier[];
+  experience: number;
+  table: string;
+  tableDisplayName: string;
+  tableLocalizedName: string;
+  professions: Profession[];
+}
 
-export function recipesFromJson(json: ProtoRecipe) {
-  return json.map((recipe) => {
-    const mainProduct = getMainProduct(recipe.products, recipe.name);
-    const byproduct = getByproduct(recipe.products, mainProduct);
+export interface ModuleDefinition {
+  name: string;
+  displayName: string;
+  localizedName: string;
+  slot: string;
+  bonuses: Bonus[];
+}
 
-    if (recipe.name === 'Crispy Bacon')
-      console.log({ recipeName: recipe.name, mainProduct, byproduct });
+export interface CraftingTableDefinition {
+  name: string;
+  displayName: string;
+  localizedName: string;
+  moduleSlots: string[];
+  pluginModules: string[];
+}
 
-    return { ...recipe, mainProduct, byproduct };
+export interface EcoDataMetadata {
+  gameVersion: string;
+  schemaVersion: number;
+  upstreamSchemaVersion: number;
+  sourceRepository: string;
+  sourcePath: string;
+  sourceCommit: string;
+  sourceCommitDate: string;
+  generatedAt: string;
+  recipeCount: number;
+  itemCount: number;
+  skillCount: number;
+  talentCount: number;
+  moduleCount: number;
+}
+
+interface RawRecipeItem {
+  name: string | null;
+  tag: string | null;
+  displayName: string;
+  localizedName: string;
+  quantity: { baseValue: number; modifiers: Modifier[] };
+}
+
+interface RawProduct extends RawRecipeItem {
+  name: string;
+  tag: null;
+  itemTags: string[];
+  isRefund: boolean;
+}
+
+interface RawRecipe {
+  name: string;
+  displayName: string;
+  localizedName: string;
+  familyName: string;
+  isBlueprint: boolean;
+  isDefault: boolean;
+  craftingTable: string;
+  tableDisplayName: string;
+  tableLocalizedName: string;
+  requiredSkill: string;
+  skillDisplayName: string;
+  skillLocalizedName: string;
+  requiredSkillLevel: number;
+  labor: { baseValue: number; modifiers: Modifier[] };
+  craftMinutes: { baseValue: number; modifiers: Modifier[] };
+  ingredients: RawRecipeItem[];
+  products: RawProduct[];
+}
+
+interface RawEcoData {
+  metadata: EcoDataMetadata;
+  skills: Omit<Profession, 'level'>[];
+  modules: ModuleDefinition[];
+  craftingTables: CraftingTableDefinition[];
+  recipes: RawRecipe[];
+}
+
+const ecoData = rawEcoData as unknown as RawEcoData;
+const skillsByName = new Map(
+  ecoData.skills.map((skill) => [skill.name, skill]),
+);
+
+function createBaselineItem(item: RawRecipeItem): BaselineItem {
+  return {
+    quantity: item.quantity.baseValue,
+    modifiers: item.quantity.modifiers,
+    isConstant: item.quantity.modifiers.length === 0,
+    displayName: item.displayName,
+    localizedName: item.localizedName,
+  };
+}
+
+function createRecipe(recipe: RawRecipe): Recipe {
+  const products: Product[] = recipe.products.map((product) => ({
+    ...createBaselineItem(product),
+    name: product.name,
+    itemTags: product.itemTags,
+    isRefund: product.isRefund,
+  }));
+  const mainProduct =
+    products.find((product) => !product.isRefund) ?? products[0];
+  const skill = skillsByName.get(recipe.requiredSkill);
+  const profession: Profession = {
+    name: recipe.requiredSkill || 'GeneralSkill',
+    displayName: recipe.skillDisplayName || 'General',
+    localizedName: recipe.skillLocalizedName || '通用',
+    level: recipe.requiredSkillLevel,
+    maxLevel: skill?.maxLevel ?? 0,
+    laborReducePercent: skill?.laborReducePercent ?? [1],
+    talents: skill?.talents ?? [],
+  };
+
+  return {
+    name: recipe.name,
+    displayName: recipe.displayName,
+    localizedName: recipe.localizedName,
+    familyName: recipe.familyName,
+    isBlueprint: recipe.isBlueprint,
+    isDefault: recipe.isDefault,
+    ingredients: recipe.ingredients.map((ingredient) => ({
+      ...createBaselineItem(ingredient),
+      name: ingredient.name,
+      tag: ingredient.tag,
+    })) as Ingredient[],
+    products,
+    mainProduct,
+    byproducts: products.filter((product) => product !== mainProduct),
+    calories: recipe.labor.baseValue,
+    laborModifiers: recipe.labor.modifiers,
+    craftMinutes: recipe.craftMinutes.baseValue,
+    craftMinuteModifiers: recipe.craftMinutes.modifiers,
+    experience: 0,
+    table: recipe.craftingTable,
+    tableDisplayName: recipe.tableDisplayName,
+    tableLocalizedName: recipe.tableLocalizedName,
+    professions: [profession],
+  };
+}
+
+export const recipes: Recipe[] = ecoData.recipes.map(createRecipe);
+export const skillDefinitions: Profession[] = ecoData.skills.map((skill) => ({
+  ...skill,
+  level: 0,
+}));
+export const modules: ModuleDefinition[] = ecoData.modules;
+export const craftingTables: CraftingTableDefinition[] = ecoData.craftingTables;
+export const dataMetadata: EcoDataMetadata = ecoData.metadata;
+
+export const modulesByName = new Map(
+  modules.map((module) => [module.name, module]),
+);
+export const craftingTablesByName = new Map(
+  craftingTables.map((table) => [table.name, table]),
+);
+
+/** Compatibility adapter for the original calculator's JSON export format. */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export function recipesFromJson(json: unknown): Recipe[] {
+  if (!Array.isArray(json)) throw new Error('配方数据必须是数组。');
+
+  return json.map((value, index) => {
+    const recipe = value as Record<string, any>;
+    if (!Array.isArray(recipe.ingredients) || !Array.isArray(recipe.products)) {
+      throw new Error(`第 ${index + 1} 条配方缺少原料或产品。`);
+    }
+
+    const products: Product[] = recipe.products.map((product: any) => ({
+      name: String(product.name),
+      displayName: String(product.displayName ?? product.name),
+      localizedName: String(
+        product.localizedName ?? product.displayName ?? product.name,
+      ),
+      quantity: Number(product.quantity ?? 0),
+      modifiers:
+        product.modifiers ??
+        (product.isConstant ? [] : [{ dynamicType: 'Module' }]),
+      isConstant: Boolean(product.isConstant),
+      itemTags: product.itemTags ?? [],
+      isRefund: Boolean(product.isRefund),
+    }));
+    const mainProduct = products[0];
+    const profession = recipe.professions?.[0] ?? {
+      name: 'GeneralSkill',
+      displayName: 'General',
+      localizedName: '通用',
+      level: 0,
+      maxLevel: 0,
+      laborReducePercent: [1],
+      talents: [],
+    };
+
+    return {
+      name: String(recipe.name),
+      displayName: String(recipe.displayName ?? recipe.name),
+      localizedName: String(
+        recipe.localizedName ?? recipe.displayName ?? recipe.name,
+      ),
+      familyName: String(recipe.familyName ?? recipe.name),
+      isBlueprint: Boolean(recipe.isBlueprint),
+      isDefault: recipe.isDefault !== false,
+      ingredients: recipe.ingredients.map((ingredient: any) => ({
+        name: ingredient.name ?? null,
+        tag: ingredient.tag ?? null,
+        displayName: String(
+          ingredient.displayName ?? ingredient.name ?? ingredient.tag,
+        ),
+        localizedName: String(
+          ingredient.localizedName ??
+            ingredient.displayName ??
+            ingredient.name ??
+            ingredient.tag,
+        ),
+        quantity: Number(ingredient.quantity ?? 0),
+        modifiers:
+          ingredient.modifiers ??
+          (ingredient.isConstant
+            ? []
+            : [{ dynamicType: 'Module', valueType: 'Efficiency' }]),
+        isConstant: Boolean(ingredient.isConstant),
+      })) as Ingredient[],
+      products,
+      mainProduct,
+      byproducts: products.slice(1),
+      calories: Number(recipe.calories ?? 0),
+      laborModifiers: recipe.laborModifiers ?? [{ dynamicType: 'Skill' }],
+      craftMinutes: Number(recipe.craftMinutes ?? recipe.time ?? 0),
+      craftMinuteModifiers: recipe.craftMinuteModifiers ?? [],
+      experience: Number(recipe.experience ?? 0),
+      table: String(recipe.table ?? 'CustomCraftingTableItem'),
+      tableDisplayName: String(
+        recipe.tableDisplayName ?? recipe.table ?? '自定义制作站',
+      ),
+      tableLocalizedName: String(
+        recipe.tableLocalizedName ??
+          recipe.tableDisplayName ??
+          recipe.table ??
+          '自定义制作站',
+      ),
+      professions: [profession],
+    };
   });
 }
-
-export function getMainProduct(
-  products: Product[],
-  recipeName: string,
-): Product {
-  // Usual case. Only 1 product
-  if (products.length === 1) return products[0];
-
-  // https://github.com/Gonozal/eco-cost-calculator/issues/3
-  const identicallyNamedProduct = products.find((product) => {
-    const concatRecipeName = recipeName.replace(' ', '');
-    const match = product.name.match(concatRecipeName);
-
-    return match;
-  });
-
-  if (identicallyNamedProduct) return identicallyNamedProduct;
-
-  // "Waste" Byproduct that scales with inputs. E.g. smelting (slag) or concentrating (tailings), oil drilling (barrels)
-  const hasScalingProduct = products.some((product) => !product.isConstant);
-  if (hasScalingProduct)
-    return products.find((product) => product.isConstant) as Product;
-
-  // Return The product with the largest quantity (e.g. ore crushing)
-  return [...products].sort((a, b) => b.quantity - a.quantity)[0];
-
-  // Are there other cases?
-}
-
-export function getByproduct(
-  products: Product[],
-  mainProduct: Product,
-): Product | undefined {
-  // Usual case. Only 1 main product
-  if (products.length === 1) return undefined;
-
-  // "Waste" Byproduct that scales with inputs. E.g. smelting (slag) or concentrating (tailings), oil drilling (barrels)
-  return products.filter((product) => product.name !== mainProduct.name)[0];
-}
+/* eslint-enable @typescript-eslint/no-explicit-any */

@@ -13,8 +13,14 @@ export const updateProfessionAction = ({
   if (!profession) return;
 
   profession.level = updatedProfession.level;
-  profession.hasLavishWorkspace =
-    updatedProfession.level >= 6 && updatedProfession.hasLavishWorkspace;
+  profession.selectedTalents = Object.fromEntries(
+    Object.entries(updatedProfession.selectedTalents).filter(([groupName]) => {
+      const talent = profession.talents.find(
+        (candidate) => candidate.groupName === groupName,
+      );
+      return talent && updatedProfession.level >= talent.unlockLevel;
+    }),
+  );
 
   draft.recipes.forEach((recipe) => {
     if (!recipeMatchesProfession(recipe, profession)) return;

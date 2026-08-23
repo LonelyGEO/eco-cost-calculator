@@ -1,4 +1,9 @@
-import { AppState, ProcessActionProps, reviver } from '../state';
+import {
+  AppState,
+  mergeRecipeData,
+  ProcessActionProps,
+  reviver,
+} from '../state';
 
 interface ImportProfileActionProps extends ProcessActionProps {
   profileString: string;
@@ -11,7 +16,8 @@ export const importProfileAction = ({
   try {
     const json: AppState = JSON.parse(profileString, reviver);
 
-    draft.data = json.data;
+    draft.customRecipes = json.customRecipes ?? new Map();
+    draft.data = mergeRecipeData(draft.customRecipes);
     draft.craftingStations = json.craftingStations;
     draft.professions = json.professions;
     draft.recipes = json.recipes;

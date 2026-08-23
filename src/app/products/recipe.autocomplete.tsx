@@ -6,7 +6,6 @@ import { Recipe } from '../../data/recipes';
 import parse from 'autosuggest-highlight/parse';
 import match from 'autosuggest-highlight/match';
 import styled from 'styled-components';
-import { localizeGameText } from '../../data/localization';
 
 const StyledListItem = styled.li`
   background-color: rgba(255, 255, 255, 0.05);
@@ -19,7 +18,8 @@ interface RecipeAutocompleteProps {
 }
 
 const filterOptions = createFilterOptions<Recipe>({
-  stringify: (option) => `${localizeGameText(option.name)} ${option.name}`,
+  stringify: (option) =>
+    `${option.localizedName} ${option.displayName} ${option.name} ${option.tableLocalizedName}`,
 });
 
 export const RecipeAutocomplete: React.FC<RecipeAutocompleteProps> = ({
@@ -48,7 +48,7 @@ export const RecipeAutocomplete: React.FC<RecipeAutocompleteProps> = ({
           });
         });
       }}
-      getOptionLabel={(option) => localizeGameText(option.name)}
+      getOptionLabel={(option) => option.localizedName || option.displayName}
       renderInput={(params) => <TextField {...params} label="选择制作配方" />}
       noOptionsText="没有匹配的配方"
       openText="展开"
@@ -57,7 +57,7 @@ export const RecipeAutocomplete: React.FC<RecipeAutocompleteProps> = ({
       isOptionEqualToValue={(option, value) => option.name === value.name}
       renderTags={() => null}
       renderOption={(props, option, { inputValue }) => {
-        const localizedName = localizeGameText(option.name);
+        const localizedName = option.localizedName || option.displayName;
         const matches = match(localizedName, inputValue);
         const parts = parse(localizedName, matches);
 

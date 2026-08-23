@@ -47,7 +47,8 @@
     "eject": "react-scripts eject",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\"",
-    "sync:translations": "pwsh -File ./scripts/sync-eco-zh-cn.ps1",
+    "sync:translations": "pwsh -File ./scripts/sync-eco-zh-cn.ps1 && npm run sync:data",
+    "sync:data": "node ./scripts/sync-eco-data.mjs --game-version=14.0.3",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
   },

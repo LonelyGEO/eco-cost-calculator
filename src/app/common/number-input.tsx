@@ -1,6 +1,7 @@
 import { TextFieldProps, TextField } from '@mui/material';
 import React from 'react';
 import NumberFormat from 'react-number-format';
+import { InputBaseComponentProps } from '@mui/material/InputBase';
 
 export const NumberInput: React.FC<TextFieldProps> = ({
   children,
@@ -14,7 +15,8 @@ export const NumberInput: React.FC<TextFieldProps> = ({
       size="small"
       inputProps={{ style: { textAlign: 'right' } }}
       InputProps={{
-        inputComponent: NumberFormatCustom as any,
+        inputComponent:
+          NumberFormatCustom as unknown as React.ElementType<InputBaseComponentProps>,
       }}
       {...props}
     />

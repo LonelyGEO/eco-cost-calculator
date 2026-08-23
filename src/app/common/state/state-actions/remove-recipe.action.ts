@@ -26,7 +26,13 @@ export function processRemoveRecipeAction({
     }
   });
 
-  removeRecipeByproduct({ draft, removedRecipe });
+  removedRecipe.byproducts.forEach((byproduct) =>
+    removeRecipeByproduct({
+      draft,
+      removedRecipe,
+      byproductName: byproduct.name,
+    }),
+  );
   removeRecipeMainProduct({ draft, removedRecipe });
 
   draft.recipes.delete(removedRecipe.name);
@@ -42,6 +48,10 @@ export function processRemoveRecipeAction({
 interface RemoveRecipeProductProps {
   draft: AppState;
   removedRecipe: CraftingRecipe;
+}
+
+interface RemoveRecipeByproductProps extends RemoveRecipeProductProps {
+  byproductName: string;
 }
 
 // Remove recipe from references.
@@ -74,9 +84,9 @@ function removeRecipeMainProduct({
 function removeRecipeByproduct({
   draft,
   removedRecipe,
-}: RemoveRecipeProductProps) {
-  const key = removedRecipe.byproduct?.name;
-  if (!key) return;
+  byproductName,
+}: RemoveRecipeByproductProps) {
+  const key = byproductName;
 
   const item = draft.byproducts.get(key);
 

@@ -1,6 +1,7 @@
 import {
   Button,
   Checkbox,
+  Chip,
   Divider,
   FormControlLabel,
   IconButton,
@@ -12,11 +13,14 @@ import {
 } from '@mui/material';
 import React from 'react';
 import SettingsIcon from '@mui/icons-material/Settings';
+import EditIcon from '@mui/icons-material/Edit';
 import { FlexItem } from '../common/flex-grid-item';
 import { ActionType, replacer } from '../common/state/state';
 import { NumberInput } from '../common/number-input';
 import styled from 'styled-components';
 import { useActiveProfile, useProfiles } from '../common/state/state-provider';
+import { dataMetadata } from '../../data/recipes';
+import { RecipeEditorDialog } from './recipe-editor.dialog';
 
 const Input = styled('input')({
   display: 'none',
@@ -33,7 +37,12 @@ export const Settings: React.FC<SettingsProps> = ({
   const { dispatch, profiles } = useProfiles();
   const [profileName, setProfileName] = React.useState(activeProfile?.name);
 
+  React.useEffect(() => {
+    setProfileName(activeProfile?.name);
+  }, [activeProfile?.id, activeProfile?.name]);
+
   const [showDangerousActions, setShowDangerousActions] = React.useState(false);
+  const [showRecipeEditor, setShowRecipeEditor] = React.useState(false);
 
   if (!activeProfile) return null;
   return (
@@ -61,6 +70,32 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
         {isVisible ? (
           <>
+            <Chip
+              label={`ECO ${dataMetadata.gameVersion}`}
+              color="success"
+              variant="outlined"
+              sx={{ alignSelf: 'center', marginY: 1 }}
+            />
+            <Typography variant="caption" sx={{ textAlign: 'center' }}>
+              官方原版数据：{dataMetadata.recipeCount.toLocaleString()} 条配方 ·{' '}
+              {new Date(dataMetadata.sourceCommitDate).toLocaleDateString(
+                'zh-CN',
+              )}
+            </Typography>
+            <Button
+              startIcon={<EditIcon />}
+              onClick={() => setShowRecipeEditor(true)}
+              sx={{ marginY: 1 }}
+            >
+              配方编辑器
+            </Button>
+            <RecipeEditorDialog
+              open={showRecipeEditor}
+              recipes={activeProfile.data}
+              customRecipes={activeProfile.customRecipes}
+              dispatch={dispatch}
+              onClose={() => setShowRecipeEditor(false)}
+            />
             <FlexItem>
               <Button
                 component="a"
@@ -209,6 +244,9 @@ export const Settings: React.FC<SettingsProps> = ({
           </>
         ) : (
           <>
+            <Typography variant="caption">
+              ECO {dataMetadata.gameVersion}
+            </Typography>
             <Typography>{activeProfile.margin * 100}%</Typography>
             <Typography>{activeProfile.calorieCost}/千卡</Typography>
           </>

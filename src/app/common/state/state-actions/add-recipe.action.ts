@@ -7,6 +7,7 @@ import {
 } from '../state';
 import { getCraftingStationName } from '../state-getters';
 import { markForUpdate, updatePrice } from '../update-prices';
+import { craftingTablesByName } from '../../../../data/recipes';
 
 interface processAddRecipeFromInputActionProps extends ProcessActionProps {
   input: Item;
@@ -72,7 +73,9 @@ export function processAddRecipeAction({
   // Add recipe reference to existing items
 
   handleAddedRecipeMainProduct({ draft, addedRecipe });
-  handleAddedRecipeByproduct({ draft, addedRecipe });
+  addedRecipe.byproducts.forEach((byproduct) =>
+    handleAddedRecipeByproduct({ draft, addedRecipe, byproduct }),
+  );
 
   const craftingStationName = getCraftingStationName({ recipe: addedRecipe });
   // Add crafting station if not already present
@@ -82,11 +85,18 @@ export function processAddRecipeAction({
     ) as CraftingStation;
     station.usedByRecipes.add(addedRecipe.name);
   } else {
+    const tableDefinition = craftingTablesByName.get(addedRecipe.table);
     draft.craftingStations.set(craftingStationName, {
       name: addedRecipe.table,
-      profession: addedRecipe.professions[0],
-      upgradeLevel: 0,
-      workflowFactor: 1,
+      displayName: addedRecipe.tableDisplayName,
+      localizedName: addedRecipe.tableLocalizedName,
+      profession: {
+        ...addedRecipe.professions[0],
+        selectedTalents: {},
+      },
+      moduleSlots: tableDefinition?.moduleSlots ?? [],
+      pluginModules: tableDefinition?.pluginModules ?? [],
+      selectedModules: {},
       usedByRecipes: new Set([addedRecipe.name]),
     });
   }
@@ -96,7 +106,12 @@ export function processAddRecipeAction({
     draft.professions.set(addedRecipe.professions[0].name, {
       level: 0,
       displayName: addedRecipe.professions[0].displayName,
+      localizedName: addedRecipe.professions[0].localizedName,
       name: addedRecipe.professions[0].name,
+      maxLevel: addedRecipe.professions[0].maxLevel,
+      laborReducePercent: addedRecipe.professions[0].laborReducePercent,
+      talents: addedRecipe.professions[0].talents,
+      selectedTalents: {},
     });
   }
   const mainProduct = draft.products.get(addedRecipe.mainProduct.name);
@@ -109,6 +124,11 @@ export function processAddRecipeAction({
 interface HandleAddedRecipeProductsProps {
   draft: AppState;
   addedRecipe: CraftingRecipe;
+}
+
+interface HandleAddedRecipeByproductProps
+  extends HandleAddedRecipeProductsProps {
+  byproduct: CraftingRecipe['byproducts'][number];
 }
 
 // If added as a product, an item is moved from inputs to products.
@@ -156,10 +176,9 @@ function handleAddedRecipeMainProduct({
 function handleAddedRecipeByproduct({
   draft,
   addedRecipe,
-}: HandleAddedRecipeProductsProps) {
-  if (!addedRecipe.byproduct) return;
-
-  const key = addedRecipe.byproduct?.name;
+  byproduct,
+}: HandleAddedRecipeByproductProps) {
+  const key = byproduct.name;
   if (draft.byproducts.has(key)) {
     const item = draft.byproducts.get(key) as Item;
     item.byproductOfRecipes.add(addedRecipe.name);
@@ -167,7 +186,7 @@ function handleAddedRecipeByproduct({
   }
 
   draft.byproducts.set(key, {
-    displayName: addedRecipe.byproduct.displayName,
+    displayName: byproduct.displayName,
     highlighted: false,
     name: key,
     price: 0,
@@ -175,9 +194,7 @@ function handleAddedRecipeByproduct({
     usedInRecipes: new Set(),
     byproductOfRecipes: new Set([addedRecipe.name]),
     canBeProduced: Boolean(
-      draft.data.find(
-        (recipe) => recipe.mainProduct.name === addedRecipe.byproduct?.name,
-      ),
+      draft.data.find((recipe) => recipe.mainProduct.name === byproduct.name),
     ),
   });
 }

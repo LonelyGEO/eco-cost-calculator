@@ -20,7 +20,7 @@ import {
 } from './update-prices';
 
 export interface ProfessionState extends Profession {
-  hasLavishWorkspace?: boolean;
+  selectedTalents: Record<string, number>;
 }
 
 export type ItemMap = Map<string, Item>;
@@ -41,6 +41,7 @@ export interface AppState {
   updating: Set<string>;
   updated: Set<string>;
   data: Recipe[];
+  customRecipes: Map<string, Recipe>;
 }
 
 export interface Item {
@@ -61,16 +62,17 @@ export interface CraftingRecipe extends Recipe {
   margin?: number;
   fixedCost?: number;
 }
-export type UpgradeLevel = 0 | 1 | 2 | 3 | 4 | 5;
-
 export interface CraftingStation {
   name: string;
-  upgradeLevel: UpgradeLevel;
+  displayName: string;
+  localizedName: string;
   profession: ProfessionState;
-  workflowFactor: number;
+  moduleSlots: string[];
+  pluginModules: string[];
+  selectedModules: Record<string, string>;
   usedByRecipes: Set<string>;
 }
-export const LOCAL_STORAGE_KEY = 'appState';
+export const LOCAL_STORAGE_KEY = 'eco-cost-calculator-state-v14';
 
 export type ProfileMap = Map<number, AppState>;
 
@@ -94,6 +96,7 @@ export const initialState: AppState = {
   updating: new Set(),
   updated: new Set(),
   data: recipes,
+  customRecipes: new Map(),
 };
 
 export const standardProfiles: Profiles = {
@@ -111,6 +114,8 @@ export enum ActionType {
   UPDATE_ITEM_PRICE,
   UPDATE_BYPRODUCT_PRICE,
   UPDATE_CRAFTING_STATION_UPGRADE,
+  UPSERT_CUSTOM_RECIPE,
+  DELETE_CUSTOM_RECIPE,
   UPDATE_PROFESSION,
   UPDATE_CALORIE_COST,
   IMPORT_PROFILE,
@@ -171,6 +176,16 @@ interface UpdateCraftingStationAction {
   updatedCraftingStation: CraftingStation;
 }
 
+interface UpsertCustomRecipeAction {
+  type: ActionType.UPSERT_CUSTOM_RECIPE;
+  recipe: Recipe;
+}
+
+interface DeleteCustomRecipeAction {
+  type: ActionType.DELETE_CUSTOM_RECIPE;
+  recipeName: string;
+}
+
 interface UpdateDataJsonAction {
   type: ActionType.UPLOAD_DATA_JSON;
   data: string;
@@ -221,6 +236,8 @@ export type Action =
   | UpdateDataJsonAction
   | UpdateProfessionLevelAction
   | UpdateCraftingStationAction
+  | UpsertCustomRecipeAction
+  | DeleteCustomRecipeAction
   | UpdateCalorieCostAction
   | AddProfileAction
   | DeleteActiveProfileAction
@@ -309,6 +326,14 @@ function processProfileAction(draft: AppState, action: Action): void {
         draft,
         updatedCraftingStation: action.updatedCraftingStation,
       });
+    case ActionType.UPSERT_CUSTOM_RECIPE:
+      draft.customRecipes.set(action.recipe.name, action.recipe);
+      resetRecipeData(draft);
+      return;
+    case ActionType.DELETE_CUSTOM_RECIPE:
+      draft.customRecipes.delete(action.recipeName);
+      resetRecipeData(draft);
+      return;
     case ActionType.UPLOAD_DATA_JSON:
       return updateDataJsonAction({ draft, data: action.data });
     case ActionType.IMPORT_PROFILE:
@@ -366,15 +391,16 @@ function processByproductPriceUpdate({
   });
 }
 
-export function replacer(key: string, value: any) {
+export function replacer(key: string, value: unknown): unknown {
+  if (key === 'data') return undefined;
   if (!value) return value;
-  if (value.__proto__ === Map.prototype) {
+  if (value instanceof Map) {
     return {
       _type: 'map',
       map: [...value],
     };
   }
-  if (value.__proto__ === Set.prototype) {
+  if (value instanceof Set) {
     return {
       _type: 'set',
       set: [...value],
@@ -384,10 +410,15 @@ export function replacer(key: string, value: any) {
   return value;
 }
 
-export function reviver(_: string, value: any) {
-  if (!value) return value;
-  if (value._type === 'map') return new Map(value.map);
-  if (value._type === 'set') return new Set(value.set);
+export function reviver(_: string, value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const typedValue = value as {
+    _type?: string;
+    map?: [unknown, unknown][];
+    set?: unknown[];
+  };
+  if (typedValue._type === 'map') return new Map(typedValue.map ?? []);
+  if (typedValue._type === 'set') return new Set(typedValue.set ?? []);
   else return value;
 }
 
@@ -400,7 +431,76 @@ export function deserializeState(serialized: string): Profiles {
 
   state.profiles.forEach((profile) => {
     if (profile.name === 'Default') profile.name = '默认方案';
+    profile.customRecipes = profile.customRecipes ?? new Map();
+    profile.data = mergeRecipeData(profile.customRecipes);
+    profile.professions.forEach((profession) => {
+      profession.selectedTalents = profession.selectedTalents ?? {};
+    });
+    profile.craftingStations.forEach((station) => {
+      station.selectedModules = station.selectedModules ?? {};
+    });
   });
 
   return state;
+}
+
+export function migrateLegacyState(serialized: string): Profiles {
+  try {
+    const legacy = JSON.parse(serialized, reviver) as Partial<Profiles>;
+    if (!(legacy.profiles instanceof Map) || legacy.profiles.size === 0) {
+      return standardProfiles;
+    }
+
+    const migratedProfiles = new Map<number, AppState>();
+    legacy.profiles.forEach((legacyProfile, id) => {
+      migratedProfiles.set(id, {
+        ...initialState,
+        id,
+        name:
+          legacyProfile.name === 'Default' ? '默认方案' : legacyProfile.name,
+        calorieCost: legacyProfile.calorieCost ?? 0,
+        margin: legacyProfile.margin ?? 0,
+        recipes: new Map(),
+        inputs: new Map(),
+        products: new Map(),
+        byproducts: new Map(),
+        craftingStations: new Map(),
+        professions: new Map(),
+        updating: new Set(),
+        updated: new Set(),
+        customRecipes: new Map(),
+        data: recipes,
+      });
+    });
+
+    const activeProfile = migratedProfiles.has(legacy.activeProfile ?? -1)
+      ? (legacy.activeProfile as number)
+      : Array.from(migratedProfiles.keys())[0];
+
+    return {
+      activeProfile,
+      profiles: migratedProfiles,
+      dispatch: standardProfiles.dispatch,
+    };
+  } catch {
+    return standardProfiles;
+  }
+}
+
+export function mergeRecipeData(customRecipes: Map<string, Recipe>): Recipe[] {
+  const merged = new Map(recipes.map((recipe) => [recipe.name, recipe]));
+  customRecipes.forEach((recipe, name) => merged.set(name, recipe));
+  return Array.from(merged.values());
+}
+
+export function resetRecipeData(draft: AppState): void {
+  draft.data = mergeRecipeData(draft.customRecipes);
+  draft.craftingStations = new Map();
+  draft.professions = new Map();
+  draft.recipes = new Map();
+  draft.inputs = new Map();
+  draft.products = new Map();
+  draft.byproducts = new Map();
+  draft.updating = new Set();
+  draft.updated = new Set();
 }

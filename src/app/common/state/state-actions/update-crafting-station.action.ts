@@ -13,10 +13,9 @@ export const updateCraftingStationAction = ({
   const craftingStation = draft.craftingStations.get(key);
   if (!craftingStation) return;
 
-  craftingStation.upgradeLevel = updatedCraftingStation.upgradeLevel;
+  craftingStation.selectedModules = updatedCraftingStation.selectedModules;
 
   draft.recipes.forEach((recipe) => {
-    console.log([recipe.table, craftingStation.name]);
     if (recipe.table !== craftingStation.name) return;
     markForUpdate({ draft, element: recipe });
   });

@@ -25,7 +25,7 @@ export const SkillLevelSelect: React.FC<SkillLevelSelectProps> = ({
             ...profession,
             level: Math.min(
               Math.max(isNaN(parsed) ? profession.level : parsed, 0),
-              7,
+              profession.maxLevel,
             ),
           },
         });

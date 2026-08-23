@@ -1,4 +1,11 @@
-import { AppState, CraftingRecipe, Item } from './state';
+import { Bonus, Modifier, Recipe, modulesByName } from '../../../data/recipes';
+import {
+  AppState,
+  CraftingRecipe,
+  CraftingStation,
+  Item,
+  ProfessionState,
+} from './state';
 
 import {
   getCraftingStationForRecipe,
@@ -7,22 +14,129 @@ import {
   getRecipeOrThrow,
 } from './state-getters';
 
-const upgradeEffect: [number, number, number, number, number, number] = [
-  1, 0.9, 0.75, 0.6, 0.55, 0.5,
-];
-
-const skillCalorieEffect: [
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-] = [1, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2];
-
 // We need a custom entrypoint here. Byproduct relations to recipe price is reversed over normal products.
+
+interface BonusAggregate {
+  multiplier: number;
+  additive: number;
+  percentSum: number;
+}
+
+function bonusPassesFilters(bonus: Bonus, recipe: Recipe): boolean {
+  const skillName = recipe.professions[0].name;
+  if (bonus.skillTypes?.length && !bonus.skillTypes.includes(skillName))
+    return false;
+  if (bonus.excludedSkillTypes?.includes(skillName)) return false;
+  if (bonus.itemTags?.length) {
+    const productTags = new Set(
+      recipe.products.flatMap((product) => product.itemTags),
+    );
+    if (!bonus.itemTags.some((tag) => productTags.has(tag))) return false;
+  }
+  return true;
+}
+
+function applyBonus(
+  aggregate: BonusAggregate,
+  bonus: Bonus,
+  level: number,
+  baseValue: number,
+) {
+  if (bonus.effectType === 'Multiplicative') {
+    aggregate.multiplier *= bonus.value;
+    return;
+  }
+  if (bonus.effectType === 'CappedMultiplicative') {
+    let multiplier = 1 + (bonus.value - 1) * level;
+    if (bonus.cap != null) {
+      multiplier =
+        bonus.value < 1
+          ? Math.max(multiplier, bonus.cap)
+          : Math.min(multiplier, bonus.cap);
+    }
+    aggregate.multiplier *= multiplier;
+    return;
+  }
+  if (bonus.effectType === 'AdditivePercent') {
+    aggregate.percentSum += bonus.value;
+    return;
+  }
+  if (bonus.effectType === 'Additive') {
+    aggregate.additive += baseValue < 0 ? -bonus.value : bonus.value;
+  }
+}
+
+export function evaluateDynamicValue({
+  baseValue,
+  modifiers,
+  action,
+  recipe,
+  profession,
+  craftingStation,
+  isRefund = false,
+}: {
+  baseValue: number;
+  modifiers: Modifier[];
+  action: Bonus['action'];
+  recipe: Recipe;
+  profession: ProfessionState;
+  craftingStation: CraftingStation;
+  isRefund?: boolean;
+}): number {
+  const aggregate: BonusAggregate = {
+    multiplier: 1,
+    additive: 0,
+    percentSum: 0,
+  };
+
+  modifiers.forEach((modifier) => {
+    if (modifier.dynamicType === 'Skill') {
+      const level = Math.max(
+        0,
+        Math.min(profession.level, profession.laborReducePercent.length - 1),
+      );
+      aggregate.multiplier *= profession.laborReducePercent[level] ?? 1;
+      return;
+    }
+    if (modifier.dynamicType !== 'Talent' || !modifier.item) return;
+    const talent = profession.talents.find(
+      (candidate) => candidate.name === modifier.item,
+    );
+    if (!talent) return;
+    const selectedLevel = profession.selectedTalents[talent.groupName] ?? 0;
+    if (selectedLevel <= 0 || profession.level < talent.unlockLevel) return;
+    talent.bonuses
+      .filter(
+        (bonus) => bonus.action === action && bonusPassesFilters(bonus, recipe),
+      )
+      .forEach((bonus) =>
+        applyBonus(aggregate, bonus, selectedLevel, baseValue),
+      );
+  });
+
+  const modulesApply =
+    action === 'LaborCost' ||
+    action === 'CraftTime' ||
+    (action === 'ResourceCost' && modifiers.length > 0) ||
+    (action === 'Yield' && !isRefund);
+
+  if (modulesApply) {
+    Object.values(craftingStation.selectedModules)
+      .map((moduleName) => modulesByName.get(moduleName))
+      .filter((module): module is NonNullable<typeof module> => Boolean(module))
+      .flatMap((module) => module.bonuses)
+      .filter(
+        (bonus) => bonus.action === action && bonusPassesFilters(bonus, recipe),
+      )
+      .forEach((bonus) => applyBonus(aggregate, bonus, 1, baseValue));
+  }
+
+  return (
+    baseValue * aggregate.multiplier +
+    aggregate.additive +
+    baseValue * aggregate.percentSum
+  );
+}
 
 interface UpdatePricesProps {
   draft: AppState;
@@ -145,17 +259,14 @@ function updateRecipePrice({ draft, recipe }: UpdateRecipePriceProps) {
     assertItemHasUpdated(draft, (ingredient.name || ingredient.tag) as string);
 
     const item = getIngredientItem(draft, ingredient);
-    const ingredientCost = ingredient.quantity * item.price;
-    if (ingredient.isConstant) {
-      return cost + ingredientCost;
-    }
-
-    const lavishFactor = profession.hasLavishWorkspace ? 0.95 : 1;
-
-    const itemQuantity =
-      ingredient.quantity *
-      upgradeEffect[craftingStation.upgradeLevel] *
-      lavishFactor;
+    const itemQuantity = evaluateDynamicValue({
+      baseValue: ingredient.quantity,
+      modifiers: ingredient.modifiers,
+      action: 'ResourceCost',
+      recipe,
+      profession,
+      craftingStation,
+    });
 
     const batchedQuantity = recipe.batchSize
       ? Math.ceil(itemQuantity * recipe.batchSize) / recipe.batchSize
@@ -166,21 +277,48 @@ function updateRecipePrice({ draft, recipe }: UpdateRecipePriceProps) {
 
   const calorieCost =
     (draft.calorieCost *
-      skillCalorieEffect[profession.level] *
-      (recipe.calories || 0)) /
+      evaluateDynamicValue({
+        baseValue: recipe.calories || 0,
+        modifiers: recipe.laborModifiers,
+        action: 'LaborCost',
+        recipe,
+        profession,
+        craftingStation,
+      })) /
     1000;
 
   const totalCost = ingredientsCost + calorieCost + (recipe.fixedCost ?? 0);
 
-  const byproduct = draft.byproducts.get(recipe.byproduct?.name || '');
+  const byproductCost = recipe.byproducts.reduce((cost, product) => {
+    const byproduct = draft.byproducts.get(product.name);
+    const quantity = evaluateDynamicValue({
+      baseValue: product.quantity,
+      modifiers: product.modifiers,
+      action: 'Yield',
+      recipe,
+      profession,
+      craftingStation,
+      isRefund: product.isRefund,
+    });
+    return cost + (byproduct?.price || 0) * quantity;
+  }, 0);
 
-  const byproductCost =
-    (byproduct?.price || 0) * (recipe.byproduct?.quantity || 0);
+  const mainProductQuantity = evaluateDynamicValue({
+    baseValue: recipe.mainProduct.quantity,
+    modifiers: recipe.mainProduct.modifiers,
+    action: 'Yield',
+    recipe,
+    profession,
+    craftingStation,
+    isRefund: recipe.mainProduct.isRefund,
+  });
 
   const margin = Math.max(1 + (recipe.margin || draft.margin), 1);
 
   recipe.price =
-    ((totalCost - byproductCost) / recipe.mainProduct.quantity) * margin;
+    ((totalCost - byproductCost) /
+      Math.max(mainProductQuantity, Number.EPSILON)) *
+    margin;
 
   draft.updated.add(recipe.name);
 }

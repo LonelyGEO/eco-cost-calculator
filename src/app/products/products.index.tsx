@@ -108,7 +108,9 @@ const ProductRow: React.FC<ProductRowProps> = ({
         itemRecipes.map((recipe) => (
           <Box key={recipe.name} sx={{ paddingLeft: 3 }}>
             <IconButton
-              aria-label={`移除配方${localizeGameText(recipe.name)}`}
+              aria-label={`移除配方${
+                recipe.localizedName || recipe.displayName
+              }`}
               size="small"
               onClick={() => {
                 dispatch({
@@ -120,7 +122,7 @@ const ProductRow: React.FC<ProductRowProps> = ({
               <ClearIcon />
             </IconButton>
             <Typography component="span">
-              {localizeGameText(recipe.name)}
+              {recipe.localizedName || recipe.displayName}
             </Typography>
             <Typography
               sx={{ float: 'right', paddingRight: 2 }}
@@ -179,7 +181,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
       </IconButton>
       <Dialog open={isDialogVisible} onClose={() => setIsDialogVisible(false)}>
         <DialogTitle>
-          配方设置：{localizeGameText(primaryRecipe.name)}
+          配方设置：{primaryRecipe.localizedName || primaryRecipe.displayName}
         </DialogTitle>
         <DialogContent>
           <Stack>
