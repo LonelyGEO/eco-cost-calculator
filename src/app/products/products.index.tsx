@@ -197,22 +197,25 @@ const ProductTreeBranch: React.FC<ProductTreeBranchProps> = ({
           '&::before': {
             content: '""',
             position: 'absolute',
+            top: 0,
+            left: -9,
+            height: 20,
+            borderLeft: 1,
+            borderColor: 'divider',
+          },
+          '&:not(:last-of-type)::before': {
+            height: 'auto',
+            bottom: 0,
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
             zIndex: 1,
             top: 20,
             left: -9,
             width: 9,
             borderTop: 1,
             borderColor: 'divider',
-          },
-          '&:last-of-type::after': {
-            content: '""',
-            position: 'absolute',
-            zIndex: 0,
-            top: 21,
-            bottom: 0,
-            left: -9,
-            width: 2,
-            bgcolor: 'background.paper',
           },
         }),
       }}
@@ -236,8 +239,6 @@ const ProductTreeBranch: React.FC<ProductTreeBranchProps> = ({
             ml: 1,
             p: 0,
             pl: 1,
-            borderLeft: 1,
-            borderColor: 'divider',
           }}
         >
           {node.children.map((child) => (
