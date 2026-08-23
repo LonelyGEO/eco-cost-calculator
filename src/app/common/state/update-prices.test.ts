@@ -1,6 +1,12 @@
 import { recipes } from '../../../data/recipes';
-import { CraftingStation, ProfessionState } from './state';
-import { evaluateDynamicValue } from './update-prices';
+import {
+  AppState,
+  CraftingStation,
+  Item,
+  ProfessionState,
+  initialState,
+} from './state';
+import { evaluateDynamicValue, getIngredientUnitPrice } from './update-prices';
 
 describe('ECO 14 dynamic values', () => {
   const recipe = recipes.find(
@@ -91,5 +97,57 @@ describe('ECO 14 dynamic values', () => {
         craftingStation: talentStation,
       }),
     ).toBeCloseTo(ingredient.quantity * 0.75);
+  });
+
+  it('uses the cheapest allowed tag member or a fixed weighted mix', () => {
+    const fabricIngredient = recipes
+      .find(
+        (candidate) =>
+          candidate.name === 'GatheringResearchPaperAdvancedRecipe',
+      )
+      ?.ingredients.find((ingredient) => ingredient.tag === 'Fabric')!;
+    const makeItem = (name: string, price: number): Item => ({
+      name,
+      displayName: name,
+      price,
+      highlighted: false,
+      canBeProduced: true,
+      usedInRecipes: new Set(),
+      productOfRecipes: new Set(),
+      byproductOfRecipes: new Set(),
+    });
+    const draft: AppState = {
+      ...initialState,
+      inputs: new Map([
+        ['CottonFabricItem', makeItem('CottonFabricItem', 10)],
+        ['LinenFabricItem', makeItem('LinenFabricItem', 20)],
+      ]),
+      products: new Map(),
+      byproducts: new Map(),
+      updating: new Set(),
+      updated: new Set(),
+      tagSelections: new Map([
+        [
+          'Fabric',
+          {
+            mode: 'cheapest',
+            candidates: [
+              { name: 'CottonFabricItem', ratio: 0 },
+              { name: 'LinenFabricItem', ratio: 0 },
+            ],
+          },
+        ],
+      ]),
+    };
+
+    expect(getIngredientUnitPrice(draft, fabricIngredient)).toBe(10);
+    draft.tagSelections.set('Fabric', {
+      mode: 'mix',
+      candidates: [
+        { name: 'CottonFabricItem', ratio: 25 },
+        { name: 'LinenFabricItem', ratio: 75 },
+      ],
+    });
+    expect(getIngredientUnitPrice(draft, fabricIngredient)).toBe(17.5);
   });
 });

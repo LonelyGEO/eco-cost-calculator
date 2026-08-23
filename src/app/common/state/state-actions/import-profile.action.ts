@@ -4,6 +4,7 @@ import {
   ProcessActionProps,
   reviver,
 } from '../state';
+import { syncTagSelectionInputs } from './update-tag-selection.action';
 
 interface ImportProfileActionProps extends ProcessActionProps {
   profileString: string;
@@ -24,8 +25,10 @@ export const importProfileAction = ({
     draft.inputs = json.inputs;
     draft.products = json.products;
     draft.byproducts = json.byproducts;
+    draft.tagSelections = json.tagSelections ?? new Map();
     draft.calorieCost = json.calorieCost;
     draft.margin = json.margin;
+    syncTagSelectionInputs(draft);
 
     console.log(draft);
   } catch (error) {

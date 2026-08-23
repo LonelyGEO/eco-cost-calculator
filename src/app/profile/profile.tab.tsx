@@ -38,6 +38,8 @@ export const ProfileTab: React.FC = () => {
             dispatch={dispatch}
             byproducts={activeProfile.byproducts}
             inputs={activeProfile.inputs}
+            products={activeProfile.products}
+            tagSelections={activeProfile.tagSelections}
           />
         </Section>
       </Grid>

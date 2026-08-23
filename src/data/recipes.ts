@@ -109,6 +109,16 @@ export interface CraftingTableDefinition {
   pluginModules: string[];
 }
 
+export interface ItemDefinition {
+  name: string;
+  displayName: string;
+  localizedName: string;
+}
+
+export interface TagDefinition extends ItemDefinition {
+  associatedItems: string[];
+}
+
 export interface EcoDataMetadata {
   gameVersion: string;
   schemaVersion: number;
@@ -165,6 +175,8 @@ interface RawEcoData {
   skills: Omit<Profession, 'level'>[];
   modules: ModuleDefinition[];
   craftingTables: CraftingTableDefinition[];
+  items: ItemDefinition[];
+  tags: TagDefinition[];
   recipes: RawRecipe[];
 }
 
@@ -237,6 +249,8 @@ export const skillDefinitions: Profession[] = ecoData.skills.map((skill) => ({
 }));
 export const modules: ModuleDefinition[] = ecoData.modules;
 export const craftingTables: CraftingTableDefinition[] = ecoData.craftingTables;
+export const items: ItemDefinition[] = ecoData.items;
+export const tags: TagDefinition[] = ecoData.tags;
 export const dataMetadata: EcoDataMetadata = ecoData.metadata;
 
 export const modulesByName = new Map(
@@ -245,6 +259,8 @@ export const modulesByName = new Map(
 export const craftingTablesByName = new Map(
   craftingTables.map((table) => [table.name, table]),
 );
+export const itemsByName = new Map(items.map((item) => [item.name, item]));
+export const tagsByName = new Map(tags.map((tag) => [tag.name, tag]));
 
 /** Compatibility adapter for the original calculator's JSON export format. */
 /* eslint-disable @typescript-eslint/no-explicit-any */

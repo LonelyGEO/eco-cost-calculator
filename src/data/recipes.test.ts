@@ -1,9 +1,12 @@
 import {
   craftingTables,
   dataMetadata,
+  items,
   modules,
   recipes,
   skillDefinitions,
+  tags,
+  tagsByName,
 } from './recipes';
 
 describe('ECO 14 data', () => {
@@ -36,7 +39,27 @@ describe('ECO 14 data', () => {
     expect(bison?.byproducts).toHaveLength(2);
   });
 
+  it('contains the concrete members of vanilla ingredient tags', () => {
+    expect(tagsByName.get('Fabric')?.associatedItems).toEqual([
+      'CottonFabricItem',
+      'LinenFabricItem',
+      'NylonFabricItem',
+      'WoolFabricItem',
+    ]);
+  });
+
   it('has Chinese names for every visible Update 14 data entry', () => {
+    const ingredientTagNames = new Set(
+      recipes.flatMap((recipe) =>
+        recipe.ingredients.flatMap((ingredient) =>
+          ingredient.tag ? [ingredient.tag] : [],
+        ),
+      ),
+    );
+    const visibleTags = tags.filter((tag) => ingredientTagNames.has(tag.name));
+    const visibleTagItemNames = new Set(
+      visibleTags.flatMap((tag) => tag.associatedItems),
+    );
     const visibleNames = [
       ...recipes.flatMap((recipe) => [
         [recipe.displayName, recipe.localizedName],
@@ -62,6 +85,10 @@ describe('ECO 14 data', () => {
         table.displayName,
         table.localizedName,
       ]),
+      ...visibleTags.map((tag) => [tag.displayName, tag.localizedName]),
+      ...items
+        .filter((item) => visibleTagItemNames.has(item.name))
+        .map((item) => [item.displayName, item.localizedName]),
     ];
 
     expect(

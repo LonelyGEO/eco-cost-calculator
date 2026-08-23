@@ -8,6 +8,7 @@ import {
 import { getCraftingStationName } from '../state-getters';
 import { markForUpdate, updatePrice } from '../update-prices';
 import { craftingTablesByName } from '../../../../data/recipes';
+import { syncTagSelectionInputs } from './update-tag-selection.action';
 
 interface processAddRecipeFromInputActionProps extends ProcessActionProps {
   input: Item;
@@ -76,6 +77,7 @@ export function processAddRecipeAction({
   addedRecipe.byproducts.forEach((byproduct) =>
     handleAddedRecipeByproduct({ draft, addedRecipe, byproduct }),
   );
+  syncTagSelectionInputs(draft);
 
   const craftingStationName = getCraftingStationName({ recipe: addedRecipe });
   // Add crafting station if not already present

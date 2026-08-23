@@ -7,8 +7,13 @@ const dataDirectory = resolve(repositoryRoot, 'src', 'data');
 const sourceRepository = 'Eco-Gnome/eco-gnome-website';
 const sourcePath = 'ecocraft/eco_gnome_data.json';
 const sourceUrl = `https://raw.githubusercontent.com/${sourceRepository}/master/${sourcePath}`;
-const commitApiUrl = `https://api.github.com/repos/${sourceRepository}/commits?path=${encodeURIComponent(sourcePath)}&per_page=1`;
-const gameVersion = process.argv.find((argument) => argument.startsWith('--game-version='))?.split('=')[1] ?? '14.0.3';
+const commitApiUrl = `https://api.github.com/repos/${sourceRepository}/commits?path=${encodeURIComponent(
+  sourcePath,
+)}&per_page=1`;
+const gameVersion =
+  process.argv
+    .find((argument) => argument.startsWith('--game-version='))
+    ?.split('=')[1] ?? '14.0.3';
 
 // Update 14 introduced names that are still English in the upstream zh-Hans
 // catalog. Keep the small reviewed supplement here so regenerated data remains
@@ -74,7 +79,8 @@ const manualChinese = {
   Whetstone: '磨刀石',
   'Rice Mortar': '米砂浆',
   'Bio Gasoline': '生物汽油',
-  'Dendrology Research Paper Advanced Hull Planks': '高级树木学研究论文：船壳板',
+  'Dendrology Research Paper Advanced Hull Planks':
+    '高级树木学研究论文：船壳板',
   'Dissolve Electronic Scrap': '溶解电子废料',
   'Dry Fish': '鱼干',
   Wax: '蜡',
@@ -114,7 +120,9 @@ async function getJson(url) {
   });
 
   if (!response.ok) {
-    throw new Error(`Unable to download ${url}: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Unable to download ${url}: ${response.status} ${response.statusText}`,
+    );
   }
 
   return response.json();
@@ -161,7 +169,10 @@ function addTranslation(translations, value) {
   translations[english] = chinese;
 }
 
-const [source, commits] = await Promise.all([getJson(sourceUrl), getJson(commitApiUrl)]);
+const [source, commits] = await Promise.all([
+  getJson(sourceUrl),
+  getJson(commitApiUrl),
+]);
 const sourceCommit = commits[0];
 const itemsByName = new Map(source.Items.map((item) => [item.Name, item]));
 const tagsByName = new Map(source.Tags.map((tag) => [tag.Name, tag]));
@@ -176,10 +187,18 @@ for (const tag of source.Tags) {
 }
 
 const existingTranslationPath = resolve(dataDirectory, 'game-zh-cn.json');
-const translations = JSON.parse(await readFile(existingTranslationPath, 'utf8'));
+const translations = JSON.parse(
+  await readFile(existingTranslationPath, 'utf8'),
+);
 
-for (const collection of [source.Items, source.Tags, source.Skills, source.ModuleSlots]) {
-  for (const entry of collection) addTranslation(translations, entry.LocalizedName);
+for (const collection of [
+  source.Items,
+  source.Tags,
+  source.Skills,
+  source.ModuleSlots,
+]) {
+  for (const entry of collection)
+    addTranslation(translations, entry.LocalizedName);
 }
 
 for (const skill of source.Skills) {
@@ -189,7 +208,8 @@ for (const skill of source.Skills) {
   }
 }
 
-for (const recipe of source.Recipes) addTranslation(translations, recipe.LocalizedName);
+for (const recipe of source.Recipes)
+  addTranslation(translations, recipe.LocalizedName);
 
 function itemReference(itemOrTag) {
   const item = itemsByName.get(itemOrTag);
@@ -201,7 +221,8 @@ function itemReference(itemOrTag) {
     name: item ? itemOrTag : null,
     tag: tag ? itemOrTag : null,
     displayName: names.english || itemOrTag.replace(/Item$/, ''),
-    localizedName: names.chinese || names.english || itemOrTag.replace(/Item$/, ''),
+    localizedName:
+      names.chinese || names.english || itemOrTag.replace(/Item$/, ''),
   };
 }
 
@@ -231,34 +252,60 @@ const skills = source.Skills.map((skill) => {
   };
 });
 
-const modules = source.Items.filter((item) => item.IsPluginModule && item.ModuleSlot).map(
+const modules = source.Items.filter(
+  (item) => item.IsPluginModule && item.ModuleSlot,
+).map((item) => {
+  const names = localizedName(item.LocalizedName);
+  return {
+    name: item.Name,
+    displayName: names.english,
+    localizedName: names.chinese,
+    slot: item.ModuleSlot,
+    bonuses: (item.ModuleBonuses ?? []).map(compactBonus),
+  };
+});
+
+const craftingTables = source.Items.filter((item) => item.IsCraftingTable).map(
   (item) => {
     const names = localizedName(item.LocalizedName);
     return {
       name: item.Name,
       displayName: names.english,
       localizedName: names.chinese,
-      slot: item.ModuleSlot,
-      bonuses: (item.ModuleBonuses ?? []).map(compactBonus),
+      moduleSlots: item.CraftingTableModuleSlots ?? [],
+      pluginModules: item.CraftingTablePluginModules ?? [],
     };
   },
 );
 
-const craftingTables = source.Items.filter((item) => item.IsCraftingTable).map((item) => {
+const items = source.Items.map((item) => {
   const names = localizedName(item.LocalizedName);
   return {
     name: item.Name,
-    displayName: names.english,
-    localizedName: names.chinese,
-    moduleSlots: item.CraftingTableModuleSlots ?? [],
-    pluginModules: item.CraftingTablePluginModules ?? [],
+    displayName: names.english || item.Name.replace(/Item$/, ''),
+    localizedName:
+      names.chinese || names.english || item.Name.replace(/Item$/, ''),
+  };
+});
+
+const tags = source.Tags.map((tag) => {
+  const names = localizedName(tag.LocalizedName);
+  return {
+    name: tag.Name,
+    displayName: names.english || tag.Name,
+    localizedName: names.chinese || names.english || tag.Name,
+    associatedItems: tag.AssociatedItems ?? [],
   };
 });
 
 const recipes = source.Recipes.map((recipe) => {
   const recipeNames = localizedName(recipe.LocalizedName);
-  const ingredientNames = new Set(recipe.Ingredients.map((ingredient) => ingredient.ItemOrTag));
-  const requiredSkill = source.Skills.find((skill) => skill.Name === recipe.RequiredSkill);
+  const ingredientNames = new Set(
+    recipe.Ingredients.map((ingredient) => ingredient.ItemOrTag),
+  );
+  const requiredSkill = source.Skills.find(
+    (skill) => skill.Name === recipe.RequiredSkill,
+  );
   const skillNames = localizedName(requiredSkill?.LocalizedName);
   const table = itemsByName.get(recipe.CraftingTable);
   const tableNames = localizedName(table?.LocalizedName);
@@ -275,7 +322,8 @@ const recipes = source.Recipes.map((recipe) => {
     quantity: compactDynamicValue(product.Quantity),
     itemTags: productTagsByItem.get(product.ItemOrTag) ?? [],
     isRefund:
-      (product.Quantity.BaseValue > 0 && ingredientNames.has(product.ItemOrTag)) ||
+      (product.Quantity.BaseValue > 0 &&
+        ingredientNames.has(product.ItemOrTag)) ||
       (product.ItemOrTag === 'BarrelItem' && index > 0),
   }));
 
@@ -287,13 +335,22 @@ const recipes = source.Recipes.map((recipe) => {
     isBlueprint: Boolean(recipe.IsBlueprint),
     isDefault: Boolean(recipe.IsDefault),
     craftingTable: recipe.CraftingTable,
-    tableDisplayName: tableNames.english || recipe.CraftingTable.replace(/Item$/, ''),
+    tableDisplayName:
+      tableNames.english || recipe.CraftingTable.replace(/Item$/, ''),
     tableLocalizedName:
-      tableNames.chinese || tableNames.english || recipe.CraftingTable.replace(/Item$/, ''),
+      tableNames.chinese ||
+      tableNames.english ||
+      recipe.CraftingTable.replace(/Item$/, ''),
     requiredSkill: recipe.RequiredSkill || '',
-    skillDisplayName: skillNames.english || recipe.RequiredSkill?.replace(/Skill$/, '') || '通用',
+    skillDisplayName:
+      skillNames.english ||
+      recipe.RequiredSkill?.replace(/Skill$/, '') ||
+      '通用',
     skillLocalizedName:
-      skillNames.chinese || skillNames.english || recipe.RequiredSkill?.replace(/Skill$/, '') || '通用',
+      skillNames.chinese ||
+      skillNames.english ||
+      recipe.RequiredSkill?.replace(/Skill$/, '') ||
+      '通用',
     requiredSkillLevel: recipe.RequiredSkillLevel ?? 0,
     labor: compactDynamicValue(recipe.Labor),
     craftMinutes: compactDynamicValue(recipe.CraftMinutes),
@@ -315,12 +372,17 @@ const compactData = {
     recipeCount: recipes.length,
     itemCount: source.Items.length,
     skillCount: skills.length,
-    talentCount: skills.reduce((count, skill) => count + skill.talents.length, 0),
+    talentCount: skills.reduce(
+      (count, skill) => count + skill.talents.length,
+      0,
+    ),
     moduleCount: modules.length,
   },
   skills,
   modules,
   craftingTables,
+  items,
+  tags,
   recipes,
 };
 
@@ -334,7 +396,9 @@ await Promise.all([
   writeFile(
     existingTranslationPath,
     `${JSON.stringify(
-      Object.fromEntries(Object.entries(translations).sort(([a], [b]) => a.localeCompare(b))),
+      Object.fromEntries(
+        Object.entries(translations).sort(([a], [b]) => a.localeCompare(b)),
+      ),
       null,
       2,
     )}\n`,
@@ -345,4 +409,6 @@ await Promise.all([
 console.log(
   `Generated ECO ${gameVersion} data: ${recipes.length} recipes, ${source.Items.length} items, ${skills.length} skills, ${modules.length} current modules.`,
 );
-console.log(`Source commit: ${sourceCommit.sha} (${sourceCommit.commit.committer.date})`);
+console.log(
+  `Source commit: ${sourceCommit.sha} (${sourceCommit.commit.committer.date})`,
+);

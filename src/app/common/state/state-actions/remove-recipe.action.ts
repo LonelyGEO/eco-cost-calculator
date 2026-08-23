@@ -1,6 +1,7 @@
 import { AppState, CraftingRecipe, ProcessActionProps } from '../state';
 import { getCraftingStationName } from '../state-getters';
 import { markForUpdate, updatePrice } from '../update-prices';
+import { syncTagSelectionInputs } from './update-tag-selection.action';
 
 interface ProcessRemoveRecipeActionProps extends ProcessActionProps {
   removedRecipe: CraftingRecipe;
@@ -36,6 +37,7 @@ export function processRemoveRecipeAction({
   removeRecipeMainProduct({ draft, removedRecipe });
 
   draft.recipes.delete(removedRecipe.name);
+  syncTagSelectionInputs(draft);
   removeRecipeFromCraftingStation(draft, removedRecipe);
 
   const mainProduct = draft.products.get(removedRecipe.mainProduct.name);

@@ -1,4 +1,10 @@
-import { Bonus, Modifier, Recipe, modulesByName } from '../../../data/recipes';
+import {
+  Bonus,
+  Ingredient,
+  Modifier,
+  Recipe,
+  modulesByName,
+} from '../../../data/recipes';
 import {
   AppState,
   CraftingRecipe,
@@ -9,7 +15,6 @@ import {
 
 import {
   getCraftingStationForRecipe,
-  getIngredientItem,
   getProfessionOrThrow,
   getRecipeOrThrow,
 } from './state-getters';
@@ -243,6 +248,46 @@ function assertItemHasUpdated(draft: AppState, name: string): void {
   throw new Error(`${name} is marked for update but not updated yet!`);
 }
 
+function getPricedItem(draft: AppState, name: string): Item {
+  const item =
+    draft.inputs.get(name) ??
+    draft.products.get(name) ??
+    draft.byproducts.get(name);
+  if (!item) throw new Error(`could not find ingredient with key ${name}`);
+  return item;
+}
+
+export function getIngredientUnitPrice(
+  draft: AppState,
+  ingredient: Ingredient,
+): number {
+  if (ingredient.tag) {
+    const selection = draft.tagSelections.get(ingredient.tag);
+    if (selection?.candidates.length) {
+      const candidates = selection.candidates.map(({ name, ratio }) => {
+        assertItemHasUpdated(draft, name);
+        return { price: getPricedItem(draft, name).price, ratio };
+      });
+      if (selection.mode === 'cheapest') {
+        return Math.min(...candidates.map(({ price }) => price));
+      }
+
+      const positive = candidates.filter(({ ratio }) => ratio > 0);
+      const ratioTotal = positive.reduce((sum, { ratio }) => sum + ratio, 0);
+      if (ratioTotal > 0) {
+        return (
+          positive.reduce((sum, { price, ratio }) => sum + price * ratio, 0) /
+          ratioTotal
+        );
+      }
+    }
+  }
+
+  const key = (ingredient.name ?? ingredient.tag) as string;
+  assertItemHasUpdated(draft, key);
+  return getPricedItem(draft, key).price;
+}
+
 interface UpdateRecipePriceProps {
   draft: AppState;
   recipe: CraftingRecipe;
@@ -256,9 +301,7 @@ function updateRecipePrice({ draft, recipe }: UpdateRecipePriceProps) {
   );
 
   const ingredientsCost = recipe.ingredients.reduce((cost, ingredient) => {
-    assertItemHasUpdated(draft, (ingredient.name || ingredient.tag) as string);
-
-    const item = getIngredientItem(draft, ingredient);
+    const unitPrice = getIngredientUnitPrice(draft, ingredient);
     const itemQuantity = evaluateDynamicValue({
       baseValue: ingredient.quantity,
       modifiers: ingredient.modifiers,
@@ -272,7 +315,7 @@ function updateRecipePrice({ draft, recipe }: UpdateRecipePriceProps) {
       ? Math.ceil(itemQuantity * recipe.batchSize) / recipe.batchSize
       : itemQuantity;
 
-    return cost + batchedQuantity * item.price;
+    return cost + batchedQuantity * unitPrice;
   }, 0);
 
   const calorieCost =

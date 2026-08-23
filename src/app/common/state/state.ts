@@ -14,6 +14,10 @@ import { updateDataJsonAction } from './state-actions/update-data-json.action';
 import { updateMarginAction } from './state-actions/update-margin.action';
 import { updateProfessionAction } from './state-actions/update-profession-level.action';
 import {
+  syncTagSelectionInputs,
+  updateTagSelectionAction,
+} from './state-actions/update-tag-selection.action';
+import {
   markForUpdate,
   updateByproductPrice,
   updatePrice,
@@ -27,6 +31,15 @@ export type ItemMap = Map<string, Item>;
 export type CraftingRecipeMap = Map<string, CraftingRecipe>;
 export type CraftingStationMap = Map<string, CraftingStation>;
 export type ProfessionMap = Map<string, ProfessionState>;
+export type TagSelectionMode = 'cheapest' | 'mix';
+export interface TagSelectionCandidate {
+  name: string;
+  ratio: number;
+}
+export interface TagSelection {
+  mode: TagSelectionMode;
+  candidates: TagSelectionCandidate[];
+}
 export interface AppState {
   name: string;
   id: number;
@@ -42,6 +55,7 @@ export interface AppState {
   updated: Set<string>;
   data: Recipe[];
   customRecipes: Map<string, Recipe>;
+  tagSelections: Map<string, TagSelection>;
 }
 
 export interface Item {
@@ -97,6 +111,7 @@ export const initialState: AppState = {
   updated: new Set(),
   data: recipes,
   customRecipes: new Map(),
+  tagSelections: new Map(),
 };
 
 export const standardProfiles: Profiles = {
@@ -112,6 +127,7 @@ export enum ActionType {
   REMOVE_RECIPE,
   UPDATE_RECIPE_SETTINGS,
   UPDATE_ITEM_PRICE,
+  UPDATE_TAG_SELECTION,
   UPDATE_BYPRODUCT_PRICE,
   UPDATE_CRAFTING_STATION_UPGRADE,
   UPSERT_CUSTOM_RECIPE,
@@ -156,6 +172,12 @@ interface UpdateItemPriceAction {
     name: string;
     price: number;
   };
+}
+
+interface UpdateTagSelectionAction {
+  type: ActionType.UPDATE_TAG_SELECTION;
+  tagName: string;
+  selection: TagSelection | null;
 }
 
 interface ImportProfileAction {
@@ -229,6 +251,7 @@ export type Action =
   | AddRecipeFromInputAction
   | RemoveRecipeAction
   | UpdateItemPriceAction
+  | UpdateTagSelectionAction
   | UpdateByproductPriceAction
   | UpdateRecipeMarginAction
   | ImportProfileAction
@@ -282,6 +305,16 @@ function processGlobalAction(draft: Profiles, action: Action): void {
         ...initialState,
         ...action.newProfile,
         id,
+        inputs: new Map(),
+        products: new Map(),
+        recipes: new Map(),
+        byproducts: new Map(),
+        craftingStations: new Map(),
+        professions: new Map(),
+        updating: new Set(),
+        updated: new Set(),
+        customRecipes: new Map(),
+        tagSelections: new Map(),
       });
       return;
     case ActionType.DELETE_ACTIVE_PROFILE:
@@ -307,6 +340,12 @@ function processProfileAction(draft: AppState, action: Action): void {
       });
     case ActionType.UPDATE_ITEM_PRICE:
       return processItemPriceUpdate({ draft, updatedItem: action.updatedItem });
+    case ActionType.UPDATE_TAG_SELECTION:
+      return updateTagSelectionAction({
+        draft,
+        tagName: action.tagName,
+        selection: action.selection,
+      });
     case ActionType.UPDATE_BYPRODUCT_PRICE:
       return processByproductPriceUpdate({
         draft,
@@ -432,6 +471,7 @@ export function deserializeState(serialized: string): Profiles {
   state.profiles.forEach((profile) => {
     if (profile.name === 'Default') profile.name = '默认方案';
     profile.customRecipes = profile.customRecipes ?? new Map();
+    profile.tagSelections = profile.tagSelections ?? new Map();
     profile.data = mergeRecipeData(profile.customRecipes);
     profile.professions.forEach((profession) => {
       profession.selectedTalents = profession.selectedTalents ?? {};
@@ -439,6 +479,7 @@ export function deserializeState(serialized: string): Profiles {
     profile.craftingStations.forEach((station) => {
       station.selectedModules = station.selectedModules ?? {};
     });
+    syncTagSelectionInputs(profile);
   });
 
   return state;
@@ -469,6 +510,7 @@ export function migrateLegacyState(serialized: string): Profiles {
         updating: new Set(),
         updated: new Set(),
         customRecipes: new Map(),
+        tagSelections: new Map(),
         data: recipes,
       });
     });
@@ -503,4 +545,5 @@ export function resetRecipeData(draft: AppState): void {
   draft.byproducts = new Map();
   draft.updating = new Set();
   draft.updated = new Set();
+  syncTagSelectionInputs(draft);
 }
