@@ -142,6 +142,8 @@ describe('product recipe routes and hierarchy', () => {
         products: state.products,
         recipes: state.recipes,
         data: [],
+        estimatedQuantities: new Map(),
+        rootProducts: new Set(['DeepProduct0']),
       }),
     );
 

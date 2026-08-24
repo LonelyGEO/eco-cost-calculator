@@ -36,18 +36,23 @@ import React from 'react';
 import { FlexItem } from '../common/flex-grid-item';
 import { NumberInput } from '../common/number-input';
 import { localizeGameText } from '../../data/localization';
+import { formatEstimatedQuantity } from '../common/state/get-bill-of-materials';
 
 interface ProductProps {
   dispatch: React.Dispatch<Action>;
   products: ItemMap;
   recipes: CraftingRecipeMap;
   data: Recipe[];
+  estimatedQuantities: Map<string, number>;
+  rootProducts: Set<string>;
 }
 export const Product: React.FC<ProductProps> = ({
   dispatch,
   products,
   recipes,
   data,
+  estimatedQuantities,
+  rootProducts,
 }) => {
   const productForest = buildProductForest(products, recipes);
   const [collapsedProducts, setCollapsedProducts] = React.useState<Set<string>>(
@@ -84,6 +89,8 @@ export const Product: React.FC<ProductProps> = ({
             data={data}
             collapsedProducts={collapsedProducts}
             onToggle={toggleProduct}
+            estimatedQuantities={estimatedQuantities}
+            rootProducts={rootProducts}
           />
         ))}
       </Box>
@@ -172,6 +179,8 @@ interface ProductTreeBranchProps {
   data: Recipe[];
   collapsedProducts: Set<string>;
   onToggle: (productName: string) => void;
+  estimatedQuantities: Map<string, number>;
+  rootProducts: Set<string>;
   nested?: boolean;
 }
 
@@ -182,6 +191,8 @@ const ProductTreeBranch: React.FC<ProductTreeBranchProps> = ({
   data,
   collapsedProducts,
   onToggle,
+  estimatedQuantities,
+  rootProducts,
   nested = false,
 }) => {
   const hasChildren = node.children.length > 0;
@@ -228,6 +239,8 @@ const ProductTreeBranch: React.FC<ProductTreeBranchProps> = ({
         hasChildren={hasChildren}
         collapsed={collapsed}
         onToggle={() => onToggle(node.product.name)}
+        estimatedQuantity={estimatedQuantities.get(node.product.name) ?? 0}
+        isRoot={rootProducts.has(node.product.name)}
       />
       {hasChildren && !collapsed && (
         <Box
@@ -250,6 +263,8 @@ const ProductTreeBranch: React.FC<ProductTreeBranchProps> = ({
               data={data}
               collapsedProducts={collapsedProducts}
               onToggle={onToggle}
+              estimatedQuantities={estimatedQuantities}
+              rootProducts={rootProducts}
               nested
             />
           ))}
@@ -267,6 +282,8 @@ interface ProductRowProps {
   hasChildren: boolean;
   collapsed: boolean;
   onToggle: () => void;
+  estimatedQuantity: number;
+  isRoot: boolean;
 }
 
 const ProductRow: React.FC<ProductRowProps> = ({
@@ -277,6 +294,8 @@ const ProductRow: React.FC<ProductRowProps> = ({
   hasChildren,
   collapsed,
   onToggle,
+  estimatedQuantity,
+  isRoot,
 }) => {
   const itemRecipes = Array.from(product.productOfRecipes)
     .map((recipeName) => getRecipeOrThrow(recipes, recipeName))
@@ -335,6 +354,16 @@ const ProductRow: React.FC<ProductRowProps> = ({
         {localizeGameText(product.displayName)}
       </Typography>
       <Stack direction="row" alignItems="center" sx={{ flexShrink: 0, pr: 1 }}>
+        <Tooltip title="按每个顶级产品制作一轮估算">
+          <Chip
+            size="small"
+            variant="outlined"
+            label={`${isRoot ? '产出' : '需'} ${formatEstimatedQuantity(
+              estimatedQuantity,
+            )}`}
+            sx={{ mr: 0.75 }}
+          />
+        </Tooltip>
         <PriceDisplay price={product.price} />
         <RecipeRouteSelector
           dispatch={dispatch}
@@ -459,6 +488,9 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
   const [fixedCost, setFixedCost] = React.useState(
     primaryRecipe?.fixedCost || 0,
   );
+  const [resourceReduction, setResourceReduction] = React.useState(
+    primaryRecipe?.resourceReduction || 0,
+  );
 
   const [isDialogVisible, setIsDialogVisible] = React.useState(false);
 
@@ -519,6 +551,31 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
                 sx={{ width: 140, paddingLeft: 4 }}
               />
             </FlexItem>
+            <FlexItem>
+              <Box>
+                <Typography component="div">额外材料减免</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  用于服务器额外天赋，并与模块倍率乘算
+                </Typography>
+              </Box>
+              <NumberInput
+                value={resourceReduction}
+                onChange={(event) => {
+                  const parsed = parseFloat(event.target.value);
+                  setResourceReduction(
+                    isNaN(parsed)
+                      ? resourceReduction
+                      : Math.max(0, Math.min(parsed, 100)),
+                  );
+                }}
+                sx={{ width: 140, paddingLeft: 4 }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">%</InputAdornment>
+                  ),
+                }}
+              />
+            </FlexItem>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -527,6 +584,8 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
               setIsDialogVisible(false);
               setBatchSize(primaryRecipe?.batchSize || 0);
               setMargin(primaryRecipe?.margin || 0);
+              setFixedCost(primaryRecipe?.fixedCost || 0);
+              setResourceReduction(primaryRecipe?.resourceReduction || 0);
             }}
           >
             取消
@@ -540,6 +599,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = ({
                   fixedCost,
                   batchSize,
                   margin: margin / 100,
+                  resourceReduction,
                 },
               });
               setIsDialogVisible(false);

@@ -83,7 +83,7 @@ export function evaluateDynamicValue({
   baseValue: number;
   modifiers: Modifier[];
   action: Bonus['action'];
-  recipe: Recipe;
+  recipe: Recipe & { resourceReduction?: number };
   profession: ProfessionState;
   craftingStation: CraftingStation;
   isRefund?: boolean;
@@ -136,11 +136,16 @@ export function evaluateDynamicValue({
       .forEach((bonus) => applyBonus(aggregate, bonus, 1, baseValue));
   }
 
-  return (
+  const evaluatedValue =
     baseValue * aggregate.multiplier +
     aggregate.additive +
-    baseValue * aggregate.percentSum
-  );
+    baseValue * aggregate.percentSum;
+  const customResourceMultiplier =
+    action === 'ResourceCost'
+      ? 1 - Math.max(0, Math.min(recipe.resourceReduction ?? 0, 100)) / 100
+      : 1;
+
+  return evaluatedValue * customResourceMultiplier;
 }
 
 interface UpdatePricesProps {

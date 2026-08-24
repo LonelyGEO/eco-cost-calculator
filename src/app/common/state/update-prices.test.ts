@@ -1,6 +1,7 @@
 import { recipes } from '../../../data/recipes';
 import {
   AppState,
+  CraftingRecipe,
   CraftingStation,
   Item,
   ProfessionState,
@@ -43,6 +44,29 @@ describe('ECO 14 dynamic values', () => {
         craftingStation,
       }),
     ).toBeCloseTo(9);
+  });
+
+  it('multiplies a manual server-talent reduction with module bonuses', () => {
+    const ingredient = recipe.ingredients.find(
+      (candidate) => candidate.tag === 'CrushedRock',
+    )!;
+    const adjustedRecipe: CraftingRecipe = {
+      ...recipe,
+      price: 0,
+      highlighted: false,
+      resourceReduction: 20,
+    };
+
+    expect(
+      evaluateDynamicValue({
+        baseValue: ingredient.quantity,
+        modifiers: ingredient.modifiers,
+        action: 'ResourceCost',
+        recipe: adjustedRecipe,
+        profession,
+        craftingStation,
+      }),
+    ).toBeCloseTo(ingredient.quantity * 0.9 * 0.8);
   });
 
   it('combines the new skill labor curve and module labor bonus', () => {

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   Checkbox,
   Chip,
@@ -96,6 +97,10 @@ export const Settings: React.FC<SettingsProps> = ({
               dispatch={dispatch}
               onClose={() => setShowRecipeEditor(false)}
             />
+            <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
+              服务器额外天赋可在对应产品的配方设置中填写“额外材料减免”；0%
+              即关闭，并会与职业天赋及模块倍率乘算。
+            </Alert>
             <FlexItem>
               <Button
                 component="a"

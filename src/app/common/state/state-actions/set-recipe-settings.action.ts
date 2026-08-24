@@ -7,6 +7,7 @@ interface UpdateRecipeSettingsActionProps extends ProcessActionProps {
     margin: number;
     batchSize: number;
     fixedCost?: number;
+    resourceReduction?: number;
   };
 }
 
@@ -21,6 +22,10 @@ export const updateRecipeSettingsAction = ({
   recipe.batchSize = updatedRecipe.batchSize;
   recipe.margin = updatedRecipe.margin;
   recipe.fixedCost = updatedRecipe.fixedCost;
+  recipe.resourceReduction = Math.max(
+    0,
+    Math.min(updatedRecipe.resourceReduction ?? 0, 100),
+  );
 
   markForUpdate({ draft, element: recipe });
   updatePrice({ draft, element: recipe });

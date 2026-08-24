@@ -6,13 +6,18 @@ import { Section } from '../layout/section';
 import { Product } from '../products/products.index';
 import { SkillSegment } from '../skills/skill-element';
 import { Settings } from './settings';
+import { getEstimatedQuantities } from '../common/state/get-bill-of-materials';
 
 export const ProfileTab: React.FC = () => {
   const { dispatch } = useProfiles();
   const activeProfile = useActiveProfile();
   const [showProfile, setShowProfile] = React.useState(false);
+  const estimatedQuantities = React.useMemo(
+    () => (activeProfile ? getEstimatedQuantities(activeProfile) : undefined),
+    [activeProfile],
+  );
 
-  if (!activeProfile) return null;
+  if (!activeProfile || !estimatedQuantities) return null;
   return (
     <Grid
       container
@@ -40,6 +45,9 @@ export const ProfileTab: React.FC = () => {
             inputs={activeProfile.inputs}
             products={activeProfile.products}
             tagSelections={activeProfile.tagSelections}
+            estimatedInputQuantities={estimatedQuantities.inputs}
+            estimatedProductQuantities={estimatedQuantities.products}
+            estimatedByproductQuantities={estimatedQuantities.byproducts}
           />
         </Section>
       </Grid>
@@ -50,6 +58,8 @@ export const ProfileTab: React.FC = () => {
             data={activeProfile.data}
             products={activeProfile.products}
             recipes={activeProfile.recipes}
+            estimatedQuantities={estimatedQuantities.products}
+            rootProducts={estimatedQuantities.rootProducts}
           />
         </Section>
       </Grid>

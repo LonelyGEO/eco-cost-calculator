@@ -23,6 +23,7 @@ import styled from 'styled-components';
 import { localizeGameText } from '../../data/localization';
 import { tagsByName } from '../../data/recipes';
 import { TagSelectionDialog } from './tag-selection.dialog';
+import { formatEstimatedQuantity } from '../common/state/get-bill-of-materials';
 
 const LabelGroup = styled.div`
   display: flex;
@@ -35,6 +36,9 @@ interface IngredientsProps {
   products: ItemMap;
   byproducts: ItemMap;
   tagSelections: Map<string, TagSelection>;
+  estimatedInputQuantities: Map<string, number>;
+  estimatedProductQuantities: Map<string, number>;
+  estimatedByproductQuantities: Map<string, number>;
 }
 export const Ingredients: React.FC<IngredientsProps> = ({
   dispatch,
@@ -42,6 +46,9 @@ export const Ingredients: React.FC<IngredientsProps> = ({
   products,
   byproducts,
   tagSelections,
+  estimatedInputQuantities,
+  estimatedProductQuantities,
+  estimatedByproductQuantities,
 }) => {
   const hasByproducts = byproducts.size > 0;
   const selectedCandidateNames = new Set(
@@ -66,6 +73,8 @@ export const Ingredients: React.FC<IngredientsProps> = ({
                 inputs={inputs}
                 selection={tagSelections.get(input.name)}
                 tagName={input.name}
+                estimatedInputQuantities={estimatedInputQuantities}
+                estimatedProductQuantities={estimatedProductQuantities}
               />
             );
           }
@@ -75,6 +84,7 @@ export const Ingredients: React.FC<IngredientsProps> = ({
               dispatch={dispatch}
               item={input}
               updateAction={ActionType.UPDATE_ITEM_PRICE}
+              estimatedQuantity={estimatedInputQuantities.get(input.name) ?? 0}
             />
           );
         })}
@@ -85,6 +95,10 @@ export const Ingredients: React.FC<IngredientsProps> = ({
           dispatch={dispatch}
           item={byproduct}
           updateAction={ActionType.UPDATE_BYPRODUCT_PRICE}
+          estimatedQuantity={
+            estimatedByproductQuantities.get(byproduct.name) ?? 0
+          }
+          quantityPrefix="产出"
         />
       ))}
     </Stack>
@@ -98,6 +112,8 @@ interface TagIngredientProps {
   products: ItemMap;
   selection?: TagSelection;
   tagName: string;
+  estimatedInputQuantities: Map<string, number>;
+  estimatedProductQuantities: Map<string, number>;
 }
 
 const TagIngredient: React.FC<TagIngredientProps> = ({
@@ -107,6 +123,8 @@ const TagIngredient: React.FC<TagIngredientProps> = ({
   products,
   selection,
   tagName,
+  estimatedInputQuantities,
+  estimatedProductQuantities,
 }) => {
   const [open, setOpen] = React.useState(false);
   const tag = tagsByName.get(tagName);
@@ -125,6 +143,7 @@ const TagIngredient: React.FC<TagIngredientProps> = ({
         item={item}
         updateAction={ActionType.UPDATE_ITEM_PRICE}
         hidePrice={Boolean(selection)}
+        estimatedQuantity={estimatedInputQuantities.get(item.name) ?? 0}
         labelAction={
           <Stack direction="row" spacing={1} alignItems="center">
             {summary && <Chip size="small" label={summary} />}
@@ -153,6 +172,12 @@ const TagIngredient: React.FC<TagIngredientProps> = ({
               updateAction={ActionType.UPDATE_ITEM_PRICE}
               readOnly={products.has(name)}
               suffix={selection.mode === 'mix' ? `${ratio}%` : undefined}
+              estimatedQuantity={
+                (products.has(name)
+                  ? estimatedProductQuantities
+                  : estimatedInputQuantities
+                ).get(name) ?? 0
+              }
             />
           </Box>
         );
@@ -185,6 +210,8 @@ interface IngredientProps {
   labelAction?: React.ReactNode;
   readOnly?: boolean;
   suffix?: string;
+  estimatedQuantity?: number;
+  quantityPrefix?: '需' | '产出';
 }
 const Ingredient: React.FC<IngredientProps> = ({
   item,
@@ -194,6 +221,8 @@ const Ingredient: React.FC<IngredientProps> = ({
   labelAction,
   readOnly = false,
   suffix,
+  estimatedQuantity,
+  quantityPrefix = '需',
 }) => {
   const [price, setPrice] = React.useState<number>(item.price);
   const debouncedPrice = useDebounce(price, 250);
@@ -247,6 +276,18 @@ const Ingredient: React.FC<IngredientProps> = ({
           </Tooltip>
         )}
         {suffix && <Chip size="small" label={suffix} sx={{ ml: 1 }} />}
+        {estimatedQuantity !== undefined && (
+          <Tooltip title="按每个顶级产品制作一轮估算">
+            <Chip
+              size="small"
+              variant="outlined"
+              label={`${quantityPrefix} ${formatEstimatedQuantity(
+                estimatedQuantity,
+              )}`}
+              sx={{ ml: 1 }}
+            />
+          </Tooltip>
+        )}
         {labelAction}
       </LabelGroup>
       {!hidePrice && (

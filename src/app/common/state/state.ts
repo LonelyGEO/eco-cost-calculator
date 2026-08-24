@@ -73,6 +73,7 @@ export interface CraftingRecipe extends Recipe {
   batchSize?: number;
   margin?: number;
   fixedCost?: number;
+  resourceReduction?: number;
 }
 export interface CraftingStation {
   name: string;
@@ -166,6 +167,7 @@ interface UpdateRecipeMarginAction {
     margin: number;
     batchSize: number;
     fixedCost?: number;
+    resourceReduction?: number;
   };
 }
 
