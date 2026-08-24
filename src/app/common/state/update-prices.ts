@@ -5,6 +5,7 @@ import {
   Recipe,
   modulesByName,
 } from '../../../data/recipes';
+import { getLumberRidgeTalentsForSkill } from '../../../data/lumber-ridge';
 import {
   AppState,
   CraftingRecipe,
@@ -27,7 +28,11 @@ interface BonusAggregate {
   percentSum: number;
 }
 
-function bonusPassesFilters(bonus: Bonus, recipe: Recipe): boolean {
+function bonusPassesFilters(
+  bonus: Bonus,
+  recipe: Recipe,
+  craftingStation?: CraftingStation,
+): boolean {
   const skillName = recipe.professions[0].name;
   if (bonus.skillTypes?.length && !bonus.skillTypes.includes(skillName))
     return false;
@@ -37,6 +42,14 @@ function bonusPassesFilters(bonus: Bonus, recipe: Recipe): boolean {
       recipe.products.flatMap((product) => product.itemTags),
     );
     if (!bonus.itemTags.some((tag) => productTags.has(tag))) return false;
+  }
+  if (bonus.recipeNames?.length && !bonus.recipeNames.includes(recipe.name))
+    return false;
+  if (bonus.craftingStationTypes?.length) {
+    const stationName = craftingStation?.name ?? recipe.table;
+    const normalizedStationName = stationName.replace(/Item$/, 'Object');
+    if (!bonus.craftingStationTypes.includes(normalizedStationName))
+      return false;
   }
   return true;
 }
@@ -79,6 +92,8 @@ export function evaluateDynamicValue({
   profession,
   craftingStation,
   isRefund = false,
+  lumberRidgeEnabled = false,
+  lumberRidgeProfessions,
 }: {
   baseValue: number;
   modifiers: Modifier[];
@@ -87,6 +102,8 @@ export function evaluateDynamicValue({
   profession: ProfessionState;
   craftingStation: CraftingStation;
   isRefund?: boolean;
+  lumberRidgeEnabled?: boolean;
+  lumberRidgeProfessions?: Iterable<ProfessionState>;
 }): number {
   const aggregate: BonusAggregate = {
     multiplier: 1,
@@ -112,12 +129,35 @@ export function evaluateDynamicValue({
     if (selectedLevel <= 0 || profession.level < talent.unlockLevel) return;
     talent.bonuses
       .filter(
-        (bonus) => bonus.action === action && bonusPassesFilters(bonus, recipe),
+        (bonus) =>
+          bonus.action === action &&
+          bonusPassesFilters(bonus, recipe, craftingStation),
       )
       .forEach((bonus) =>
         applyBonus(aggregate, bonus, selectedLevel, baseValue),
       );
   });
+
+  if (lumberRidgeEnabled) {
+    const professions = lumberRidgeProfessions ?? [profession];
+    for (const ownerProfession of professions) {
+      const selectedTalents = ownerProfession.selectedLumberRidgeTalents ?? {};
+      getLumberRidgeTalentsForSkill(ownerProfession.name).forEach((talent) => {
+        const selectedLevel = selectedTalents[talent.groupName] ?? 0;
+        if (selectedLevel <= 0 || ownerProfession.level < talent.unlockLevel)
+          return;
+        talent.bonuses
+          .filter(
+            (bonus) =>
+              bonus.action === action &&
+              bonusPassesFilters(bonus, recipe, craftingStation),
+          )
+          .forEach((bonus) =>
+            applyBonus(aggregate, bonus, selectedLevel, baseValue),
+          );
+      });
+    }
+  }
 
   const modulesApply =
     action === 'LaborCost' ||
@@ -131,7 +171,9 @@ export function evaluateDynamicValue({
       .filter((module): module is NonNullable<typeof module> => Boolean(module))
       .flatMap((module) => module.bonuses)
       .filter(
-        (bonus) => bonus.action === action && bonusPassesFilters(bonus, recipe),
+        (bonus) =>
+          bonus.action === action &&
+          bonusPassesFilters(bonus, recipe, craftingStation),
       )
       .forEach((bonus) => applyBonus(aggregate, bonus, 1, baseValue));
   }
@@ -314,6 +356,8 @@ function updateRecipePrice({ draft, recipe }: UpdateRecipePriceProps) {
       recipe,
       profession,
       craftingStation,
+      lumberRidgeEnabled: draft.lumberRidgeEnabled,
+      lumberRidgeProfessions: draft.professions.values(),
     });
 
     const batchedQuantity = recipe.batchSize
@@ -332,6 +376,8 @@ function updateRecipePrice({ draft, recipe }: UpdateRecipePriceProps) {
         recipe,
         profession,
         craftingStation,
+        lumberRidgeEnabled: draft.lumberRidgeEnabled,
+        lumberRidgeProfessions: draft.professions.values(),
       })) /
     1000;
 
@@ -347,6 +393,8 @@ function updateRecipePrice({ draft, recipe }: UpdateRecipePriceProps) {
       profession,
       craftingStation,
       isRefund: product.isRefund,
+      lumberRidgeEnabled: draft.lumberRidgeEnabled,
+      lumberRidgeProfessions: draft.professions.values(),
     });
     return cost + (byproduct?.price || 0) * quantity;
   }, 0);
@@ -359,6 +407,8 @@ function updateRecipePrice({ draft, recipe }: UpdateRecipePriceProps) {
     profession,
     craftingStation,
     isRefund: recipe.mainProduct.isRefund,
+    lumberRidgeEnabled: draft.lumberRidgeEnabled,
+    lumberRidgeProfessions: draft.professions.values(),
   });
 
   const margin = Math.max(1 + (recipe.margin || draft.margin), 1);

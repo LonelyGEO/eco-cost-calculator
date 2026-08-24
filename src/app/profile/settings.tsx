@@ -21,6 +21,7 @@ import { NumberInput } from '../common/number-input';
 import styled from 'styled-components';
 import { useActiveProfile, useProfiles } from '../common/state/state-provider';
 import { dataMetadata } from '../../data/recipes';
+import { lumberRidgeMetadata } from '../../data/lumber-ridge';
 import { RecipeEditorDialog } from './recipe-editor.dialog';
 
 const Input = styled('input')({
@@ -98,9 +99,50 @@ export const Settings: React.FC<SettingsProps> = ({
               onClose={() => setShowRecipeEditor(false)}
             />
             <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
-              服务器额外天赋可在对应产品的配方设置中填写“额外材料减免”；0%
-              即关闭，并会与职业天赋及模块倍率乘算。
+              未收录的服务器规则仍可在对应产品的配方设置中填写“额外材料减免”；0%
+              即关闭，并会与职业天赋、Lumber Ridge 天赋及模块倍率乘算。
             </Alert>
+            <Paper variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+              <FormControlLabel
+                sx={{ alignItems: 'flex-start', m: 0 }}
+                label={
+                  <Stack spacing={0.25}>
+                    <Typography fontWeight={700}>
+                      启用 Lumber Ridge 职业与天赋重制
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      v{lumberRidgeMetadata.version} · 已解析{' '}
+                      {lumberRidgeMetadata.skillCount} 个职业、
+                      {lumberRidgeMetadata.talentCount} 个计价相关天赋
+                    </Typography>
+                  </Stack>
+                }
+                control={
+                  <Checkbox
+                    checked={activeProfile.lumberRidgeEnabled}
+                    onChange={(event) =>
+                      dispatch({
+                        type: ActionType.UPDATE_LUMBER_RIDGE,
+                        enabled: event.target.checked,
+                      })
+                    }
+                    inputProps={{
+                      'aria-label': '启用 Lumber Ridge 职业与天赋重制',
+                    }}
+                  />
+                }
+              />
+              <Button
+                component="a"
+                href={lumberRidgeMetadata.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                size="small"
+                sx={{ mt: 0.5 }}
+              >
+                查看 Mod.io 原始模组
+              </Button>
+            </Paper>
             <FlexItem>
               <Button
                 component="a"

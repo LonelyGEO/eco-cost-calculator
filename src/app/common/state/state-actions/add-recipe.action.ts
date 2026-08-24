@@ -95,6 +95,7 @@ export function processAddRecipeAction({
       profession: {
         ...addedRecipe.professions[0],
         selectedTalents: {},
+        selectedLumberRidgeTalents: {},
       },
       moduleSlots: tableDefinition?.moduleSlots ?? [],
       pluginModules: tableDefinition?.pluginModules ?? [],
@@ -114,6 +115,7 @@ export function processAddRecipeAction({
       laborReducePercent: addedRecipe.professions[0].laborReducePercent,
       talents: addedRecipe.professions[0].talents,
       selectedTalents: {},
+      selectedLumberRidgeTalents: {},
     });
   }
   const mainProduct = draft.products.get(addedRecipe.mainProduct.name);

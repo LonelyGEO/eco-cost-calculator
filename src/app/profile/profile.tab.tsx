@@ -34,6 +34,7 @@ export const ProfileTab: React.FC = () => {
             dispatch={dispatch}
             craftingStations={activeProfile.craftingStations}
             professions={activeProfile.professions}
+            lumberRidgeEnabled={activeProfile.lumberRidgeEnabled}
           />
         </Section>
       </Grid>

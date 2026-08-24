@@ -16,6 +16,8 @@ export interface Bonus {
   skillTypes?: string[];
   excludedSkillTypes?: string[];
   itemTags?: string[];
+  recipeNames?: string[];
+  craftingStationTypes?: string[];
 }
 
 export interface Modifier {

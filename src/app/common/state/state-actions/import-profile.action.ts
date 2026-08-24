@@ -26,6 +26,7 @@ export const importProfileAction = ({
     draft.products = json.products;
     draft.byproducts = json.byproducts;
     draft.tagSelections = json.tagSelections ?? new Map();
+    draft.lumberRidgeEnabled = json.lumberRidgeEnabled ?? false;
     draft.calorieCost = json.calorieCost;
     draft.margin = json.margin;
     syncTagSelectionInputs(draft);

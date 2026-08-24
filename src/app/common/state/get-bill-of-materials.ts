@@ -80,6 +80,8 @@ export function getEstimatedQuantities(state: AppState): EstimatedQuantities {
       recipe,
       profession,
       craftingStation,
+      lumberRidgeEnabled: state.lumberRidgeEnabled,
+      lumberRidgeProfessions: state.professions.values(),
     });
     return recipe.batchSize
       ? Math.ceil(quantity * recipe.batchSize) / recipe.batchSize
@@ -103,6 +105,8 @@ export function getEstimatedQuantities(state: AppState): EstimatedQuantities {
       profession,
       craftingStation,
       isRefund: product.isRefund,
+      lumberRidgeEnabled: state.lumberRidgeEnabled,
+      lumberRidgeProfessions: state.professions.values(),
     });
   };
 

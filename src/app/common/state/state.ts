@@ -9,6 +9,7 @@ import { updateCalorieCostAction } from './state-actions/update-calorie-cost.act
 import { updateCraftingStationAction } from './state-actions/update-crafting-station.action';
 import { updateDataJsonAction } from './state-actions/update-data-json.action';
 import { updateMarginAction } from './state-actions/update-margin.action';
+import { updateLumberRidgeAction } from './state-actions/update-lumber-ridge.action';
 import { updateProfessionAction } from './state-actions/update-profession-level.action';
 import { switchProductRecipeAction } from './state-actions/switch-product-recipe.action';
 import {
@@ -23,6 +24,7 @@ import {
 
 export interface ProfessionState extends Profession {
   selectedTalents: Record<string, number>;
+  selectedLumberRidgeTalents?: Record<string, number>;
 }
 
 export type ItemMap = Map<string, Item>;
@@ -54,6 +56,7 @@ export interface AppState {
   data: Recipe[];
   customRecipes: Map<string, Recipe>;
   tagSelections: Map<string, TagSelection>;
+  lumberRidgeEnabled: boolean;
 }
 
 export interface Item {
@@ -111,6 +114,7 @@ export const initialState: AppState = {
   data: recipes,
   customRecipes: new Map(),
   tagSelections: new Map(),
+  lumberRidgeEnabled: false,
 };
 
 export const standardProfiles: Profiles = {
@@ -136,6 +140,7 @@ export enum ActionType {
   UPDATE_CALORIE_COST,
   IMPORT_PROFILE,
   UPDATE_MARGIN,
+  UPDATE_LUMBER_RIDGE,
   UPDATE_PROFILE_NAME,
   ADD_PROFILE,
   DELETE_ACTIVE_PROFILE,
@@ -227,6 +232,11 @@ interface UpdateMarginAction {
   newMargin: number;
 }
 
+interface UpdateLumberRidgeAction {
+  type: ActionType.UPDATE_LUMBER_RIDGE;
+  enabled: boolean;
+}
+
 interface UpdateCalorieCostAction {
   type: ActionType.UPDATE_CALORIE_COST;
   newCost: number;
@@ -262,6 +272,7 @@ export type Action =
   | UpdateRecipeMarginAction
   | ImportProfileAction
   | UpdateMarginAction
+  | UpdateLumberRidgeAction
   | UpdateDataJsonAction
   | UpdateProfessionLevelAction
   | UpdateCraftingStationAction
@@ -321,6 +332,7 @@ function processGlobalAction(draft: Profiles, action: Action): void {
         updated: new Set(),
         customRecipes: new Map(),
         tagSelections: new Map(),
+        lumberRidgeEnabled: false,
       });
       return;
     case ActionType.DELETE_ACTIVE_PROFILE:
@@ -369,6 +381,8 @@ function processProfileAction(draft: AppState, action: Action): void {
       });
     case ActionType.UPDATE_MARGIN:
       return updateMarginAction({ draft, newMargin: action.newMargin });
+    case ActionType.UPDATE_LUMBER_RIDGE:
+      return updateLumberRidgeAction({ draft, enabled: action.enabled });
     case ActionType.UPDATE_CALORIE_COST:
       return updateCalorieCostAction({ draft, newCost: action.newCost });
     case ActionType.UPDATE_CRAFTING_STATION_UPGRADE:
@@ -483,9 +497,12 @@ export function deserializeState(serialized: string): Profiles {
     if (profile.name === 'Default') profile.name = '默认方案';
     profile.customRecipes = profile.customRecipes ?? new Map();
     profile.tagSelections = profile.tagSelections ?? new Map();
+    profile.lumberRidgeEnabled = profile.lumberRidgeEnabled ?? false;
     profile.data = mergeRecipeData(profile.customRecipes);
     profile.professions.forEach((profession) => {
       profession.selectedTalents = profession.selectedTalents ?? {};
+      profession.selectedLumberRidgeTalents =
+        profession.selectedLumberRidgeTalents ?? {};
     });
     profile.craftingStations.forEach((station) => {
       station.selectedModules = station.selectedModules ?? {};
@@ -522,6 +539,7 @@ export function migrateLegacyState(serialized: string): Profiles {
         updated: new Set(),
         customRecipes: new Map(),
         tagSelections: new Map(),
+        lumberRidgeEnabled: false,
         data: recipes,
       });
     });

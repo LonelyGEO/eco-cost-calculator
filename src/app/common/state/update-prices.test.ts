@@ -123,6 +123,82 @@ describe('ECO 14 dynamic values', () => {
     ).toBeCloseTo(ingredient.quantity * 0.75);
   });
 
+  it('applies Forge Fire from Lumber Ridge at its eight-level cap', () => {
+    const ironRecipe = recipes.find(
+      (candidate) => candidate.name === 'IronBarRecipe',
+    )!;
+    const ironIngredient = ironRecipe.ingredients[0];
+    const smeltingProfession: ProfessionState = {
+      ...ironRecipe.professions[0],
+      level: 7,
+      selectedTalents: {},
+      selectedLumberRidgeTalents: {
+        SmeltingIronSpecialtyTalentGroup: 8,
+      },
+    };
+    const ironStation: CraftingStation = {
+      name: ironRecipe.table,
+      displayName: ironRecipe.tableDisplayName,
+      localizedName: ironRecipe.tableLocalizedName,
+      profession: smeltingProfession,
+      moduleSlots: [],
+      pluginModules: [],
+      selectedModules: {},
+      usedByRecipes: new Set(),
+    };
+
+    expect(
+      evaluateDynamicValue({
+        baseValue: ironIngredient.quantity,
+        modifiers: ironIngredient.modifiers,
+        action: 'ResourceCost',
+        recipe: ironRecipe,
+        profession: smeltingProfession,
+        craftingStation: ironStation,
+        lumberRidgeEnabled: true,
+        lumberRidgeProfessions: [smeltingProfession],
+      }),
+    ).toBeCloseTo(ironIngredient.quantity * 0.36);
+  });
+
+  it('applies both sides of the Lumber Ridge research specialist bonus', () => {
+    const researchRecipe = recipes.find(
+      (candidate) => candidate.name === 'AgricultureResearchPaperBasicRecipe',
+    )!;
+    const ingredient = researchRecipe.ingredients[0];
+    const farmingProfession: ProfessionState = {
+      ...researchRecipe.professions[0],
+      level: 7,
+      selectedTalents: {},
+      selectedLumberRidgeTalents: {
+        FarmingSkillResearchSpecialistTalentGroup: 1,
+      },
+    };
+    const researchStation: CraftingStation = {
+      name: researchRecipe.table,
+      displayName: researchRecipe.tableDisplayName,
+      localizedName: researchRecipe.tableLocalizedName,
+      profession: farmingProfession,
+      moduleSlots: [],
+      pluginModules: [],
+      selectedModules: {},
+      usedByRecipes: new Set(),
+    };
+
+    expect(
+      evaluateDynamicValue({
+        baseValue: ingredient.quantity,
+        modifiers: ingredient.modifiers,
+        action: 'ResourceCost',
+        recipe: researchRecipe,
+        profession: farmingProfession,
+        craftingStation: researchStation,
+        lumberRidgeEnabled: true,
+        lumberRidgeProfessions: [farmingProfession],
+      }),
+    ).toBeCloseTo(ingredient.quantity * 0.7 * 1.05);
+  });
+
   it('uses the cheapest allowed tag member or a fixed weighted mix', () => {
     const fabricIngredient = recipes
       .find(
